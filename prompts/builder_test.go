@@ -14,11 +14,13 @@ func TestTemplateBuilder_Build(t *testing.T) {
 	builder, err := NewBuilder(testTemplates)
 	require.NoError(t, err)
 
-	t.Run("Error_NilData", func(t *testing.T) {
-		// nilを渡した場合のテンプレート実行エラー、または意図した挙動を検証する
-		result, err := builder.Build("test_mode", nil)
-		assert.Error(t, err)
-		assert.Equal(t, "", result)
+	t.Run("Success_NilDataForStaticTemplate", func(t *testing.T) {
+		staticTemplates := map[string]string{"static_mode": "Static Prompt"}
+		staticBuilder, _ := NewBuilder(staticTemplates)
+
+		result, err := staticBuilder.Build("static_mode", nil)
+		assert.NoError(t, err)
+		assert.Equal(t, "Static Prompt", result)
 	})
 
 	t.Run("Success_WithLocalStruct", func(t *testing.T) {

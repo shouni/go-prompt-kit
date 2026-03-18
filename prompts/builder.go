@@ -38,10 +38,6 @@ func NewBuilder(templates map[string]string) (*Builder, error) {
 // Build は、要求されたモードに応じて適切なテンプレートを実行します。
 // 注意: data の内容に関する事前バリデーションは行いません。呼び出し元で適切なデータが設定されていることを保証してください。
 func (b *Builder) Build(mode string, data any) (string, error) {
-	if data == nil {
-		return "", fmt.Errorf("データがnilです: テンプレートの実行にはデータが必要です")
-	}
-
 	tmpl, err := b.getTemplate(mode)
 	if err != nil {
 		return "", err
