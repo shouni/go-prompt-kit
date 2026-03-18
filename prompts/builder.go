@@ -16,7 +16,7 @@ func NewBuilder(templates map[string]string) (*Builder, error) {
 	if len(templates) == 0 {
 		return nil, fmt.Errorf("テンプレートマップが空またはnilです")
 	}
-	parsedTemplates := make(map[string]*template.Template)
+	parsedTemplates := make(map[string]*template.Template, len(templates))
 	for mode, content := range templates {
 		if content == "" {
 			return nil, fmt.Errorf("プロンプトテンプレート '%s' の読み込みに失敗しました: 内容が空です", mode)
