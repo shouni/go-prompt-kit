@@ -6,7 +6,7 @@ import (
 	"text/template"
 )
 
-// Builder はレビュープロンプトの構成を管理し、モード選択のロジックを内包します。
+// Builder はプロンプトの構成を管理し、モード選択のロジックを内包します。
 type Builder struct {
 	templates map[string]*template.Template
 }
