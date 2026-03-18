@@ -26,9 +26,9 @@ func Load(fileSystem fs.FS, rootDir, prefix string) (map[string]string, error) {
 			continue
 		}
 
-		modeName := strings.TrimPrefix(
-			strings.TrimSuffix(fileName, path.Ext(fileName)),
-			prefix,
+		modeName := strings.TrimSuffix(
+			strings.TrimPrefix(fileName, prefix),
+			path.Ext(fileName),
 		)
 
 		filePath := path.Join(rootDir, fileName)

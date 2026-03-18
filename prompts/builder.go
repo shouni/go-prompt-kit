@@ -22,7 +22,8 @@ func NewBuilder(templates map[string]string) (*Builder, error) {
 			return nil, fmt.Errorf("プロンプトテンプレート '%s' の読み込みに失敗しました: 内容が空です", mode)
 		}
 
-		tmpl, err := template.New(mode).Parse(content)
+		// Option("missingkey=error") を追加して、変数の埋め込み漏れを許容しない
+		tmpl, err := template.New(mode).Option("missingkey=error").Parse(content)
 		if err != nil {
 			return nil, fmt.Errorf("プロンプト '%s' の解析に失敗: %w", mode, err)
 		}
