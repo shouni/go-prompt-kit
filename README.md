@@ -27,11 +27,11 @@
 機能ごとにパッケージが独立しており、用途に合わせて柔軟に組み合わせて利用可能です。
 
 ```text
-gcp-kit/
-├── resource/          # リソースロード基盤
-│   └── loader.go      # fs.FS からファイルを動的にスキャンし map[string]string を生成
-└── prompts/           # プロンプトエンジン
-    └── builder.go     # モード管理とテンプレート実行（text/template ラッパー）
+go-prompt-kit/
+├── prompts/           # プロンプトエンジン
+│   └── builder.go     # モード管理とテンプレート実行（text/template ラッパー）
+└── resource/          # リソースロード基盤
+    └── loader.go      # fs.FS からファイルを動的にスキャンし map[string]string を生成
 ```
 
 -----
