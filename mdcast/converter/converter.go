@@ -24,7 +24,7 @@ type GoldmarkConverter struct {
 	rendererOptions []renderer.Option
 }
 
-// NewGoldmarkConverter は新しいインスタンスを作成するのだ。
+// NewGoldmarkConverter は新しいインスタンスを作成します。
 func NewGoldmarkConverter(opts ...Option) *GoldmarkConverter {
 	c := &GoldmarkConverter{
 		rendererOptions: []renderer.Option{},
@@ -51,7 +51,7 @@ func (c *GoldmarkConverter) Convert(input []byte) ([]byte, error) {
 	var buf bytes.Buffer
 
 	if err := c.md.Convert(input, &buf); err != nil {
-		return nil, fmt.Errorf("markdown to HTML 変換エラーなのだ: %w", err)
+		return nil, fmt.Errorf("markdownからHTMLへの変換に失敗しました: %w", err)
 	}
 
 	return buf.Bytes(), nil
@@ -74,7 +74,7 @@ func (c *GoldmarkConverter) ExtractTitleFromMarkdown(input []byte) string {
 	}
 
 	if err := scanner.Err(); err != nil {
-		slog.Warn("Markdownタイトル抽出中にエラーなのだ", "error", err)
+		slog.Warn("Markdownタイトル抽出中にエラーが発生しました", "error", err)
 	}
 
 	return ""
