@@ -5,33 +5,46 @@
 [![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/shouni/go-prompt-kit)](https://github.com/shouni/go-prompt-kit/tags)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🚀 概要 (About) - プロンプト管理を、もっと「動的」で「型安全」に。
+## 🚀 概要 (About) - AI 連携のインプットからアウトプットまでを一気通貫で。
 
-**Go Prompt Kit** は、AI（Gemini 等）へのプロンプトテンプレートを Go プログラム内で柔軟に管理するためのツールキットです。
+**Go Prompt Kit** は、AI（Gemini 等）へのプロンプト管理から、AI から返ってきた Markdown レスポンスの美しいドキュメント化までをサポートする Go 言語向けツールキットです。
 
-`embed.FS` を利用したリソースの自動スキャン機能と、`text/template` をベースとした強力なビルド機能を組み合わせることで、プロンプトの追加・変更に伴うボイラープレートコードを排除し、AI 連携ロジックの保守性を最大化します。
+「プロンプト構築」と「洗練されたドキュメント配信（Cast）」を組み合わせることで、AI 連携アプリケーションの開発効率と保守性を最大化します。
 
 ---
 
 ## ✨ 提供機能 (Features)
 
-* **📦 Dynamic Resource Loader**: `embed.FS` から指定したディレクトリ・接頭辞に一致するファイルを自動的にマッピングします。
-* **🛠 Template-based Builder**: `text/template` を内包し、任意の構造体データを注入して動的にプロンプトを生成します。
-* **🛡 Collision Detection**: モード名の衝突や空ファイルの読み込みを初期化時に検知する堅牢なバリデーション。
-* **🧩 High Extensibility**: `fs.FS` インターフェースに依存しているため、テスト時のモック化やローカルファイル読み込みへの切り替えが容易。
+### 📂 [prompts] プロンプトエンジン
 
----
+* **📦 Dynamic Resource Loader**: `embed.FS` からファイルを自動スキャンし、プロンプトモードを自動マッピング。
+* **🛠 Template-based Builder**: `text/template` を内包し、構造体データを注入して動的にプロンプトを生成。
+* **🛡 Collision Detection**: モード名の衝突や空ファイルを初期化時に検知する堅牢なバリデーション。
+
+### 📡 [mdcast] ドキュメント配信エンジン
+
+* **📑 Markdown to HTML**: AI のレスポンス（Markdown）を、スタイル済みの完全な HTML ドキュメントへ変換。
+* **🎨 Style-Injected Rendering**: 組み込みの CSS やテンプレートを使用して、即座に「見栄えの良い」成果物を出力。
+* **🧩 Modular Architecture**: Converter, Renderer, Runner が分離されており、特定のロジックのみの差し替えが可能。
+
+-----
 
 ## 🏗 プロジェクトレイアウト (Project Layout)
 
-機能ごとにパッケージが独立しており、用途に合わせて柔軟に組み合わせて利用可能です。
+機能ごとに独立したモジュール構成を採用しており、必要な機能だけを選択して利用可能です。
 
 ```text
 go-prompt-kit/
-├── prompts/           # プロンプトエンジン
-│   └── builder.go     # モード管理とテンプレート実行（text/template ラッパー）
-└── resource/          # リソースロード基盤
-    └── loader.go      # fs.FS からファイルを動的にスキャンし map[string]string を生成
+├── prompts/           # 【INPUT】プロンプト構築
+│   └── builder.go     #   - モード管理とテンプレート実行
+├── mdcast/            # 【OUTPUT】ドキュメント配信 (Cast)
+│   ├── ports/         #   - 抽象インターフェース定義
+│   ├── converter/     #   - Markdown 解析・タイトル抽出
+│   ├── renderer/      #   - HTML レンダリング (CSS/Template)
+│   ├── runner/        #   - 変換ワークフローの実行
+│   └── builder/       #   - 具象インスタンスの構築
+└── resource/          # 【BASE】共通基盤
+    └── loader.go      #   - fs.FS からのアセット自動スキャン
 ```
 
 -----
@@ -47,6 +60,3 @@ go-prompt-kit/
 ## 📜 ライセンス (License)
 
 このプロジェクトは [MIT License](https://opensource.org/licenses/MIT) の下で公開されています。
-
----
-
