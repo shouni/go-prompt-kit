@@ -1,0 +1,271 @@
+/**
+ * Code Review Report Stylesheet (Enhanced V4.1)
+ * =============================================================================
+ * Purpose:     Provides styling for static code analysis and quality reports.
+ * Design:      Clean report-paper style with Indigo & Teal theme.
+ * Updates:     Optimized typography hierarchy for technical reading.
+ * =============================================================================
+ */
+
+/* テーマカラーの変数定義 (セマンティック・ネーミング適用) */
+:root {
+    /* Primary Color (Main Theme: Indigo-based) */
+    --color-primary-main: #3f51b5;         /* Table Header, Links, Blockquote Border, H4 */
+    --color-primary-dark: #1a237e;         /* H2テキスト, Link Hover */
+    --color-primary-light: #5c6bc0;        /* H3テキスト */
+    --color-primary-text-accent: #3949ab;  /* Blockquote テキスト */
+    --color-primary-bg-weak: #e8eaf6;      /* Blockquote 背景 */
+
+    --rgb-primary-main: 63, 81, 181;       /* rgba()用 (3f51b5) */
+
+    /* Secondary Color (Accent Theme: Teal-based) */
+    --color-secondary-main: #004d40;       /* H1テキスト */
+    --color-secondary-light: #b2dfdb;      /* H1ボーダー */
+
+    /* Backgrounds & UI */
+    --color-bg-code: #263238;              /* コードブロック背景 */
+    --color-text-code: #eceff1;            /* コードブロックテキスト */
+}
+
+/* === 1. ベースレイアウト (レポート用紙風) === */
+html {
+    background-color: #f0f2f5;
+    min-height: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: 'Roboto', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6; /* 1.7から少し詰めて技術文書らしく変更 */
+    color: #212121;
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 40px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+/* === 2. タイポグラフィ (サイズ調整済み) === */
+
+/* H1: 文書タイトル (少しサイズを抑え、引き締まった印象に) */
+h1 {
+    font-size: 2.2em; /* 2.4em -> 2.2em */
+    color: var(--color-secondary-main);
+    border-bottom: 4px solid var(--color-secondary-light);
+    padding-bottom: 12px;
+    margin-top: 0;
+    margin-bottom: 25px;
+    line-height: 1.3;
+}
+
+/* H2: セクション区切り (視認性を保ちつつ高さを節約) */
+h2 {
+    font-size: 1.75em; /* 1.8em -> 1.75em */
+    color: var(--color-primary-dark);
+    position: relative;
+    padding-left: 16px;
+    margin-top: 45px;
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
+h2::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 75%; /* バーの高さを少し調整 */
+    width: 5px;
+    background-color: var(--color-primary-main);
+    border-radius: 3px;
+}
+
+/* H3: サブセクション (本文より明確に大きく、H2より控えめに) */
+h3 {
+    font-size: 1.4em; /* 維持 (バランス良し) */
+    color: var(--color-primary-light);
+    margin-top: 30px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    line-height: 1.4;
+}
+
+/* H4: 個別の指摘項目 (本文より「少しだけ」大きく強調) */
+h4 {
+    font-size: 1.15em; /* 1.2em -> 1.15em (本文との差を微調整) */
+    color: var(--color-primary-main);
+    margin-top: 20px;
+    margin-bottom: 8px;
+    font-weight: 700; /* 太さを強調 */
+    line-height: 1.5;
+}
+
+p { margin-bottom: 16px; font-size: 1rem; }
+ul, ol { margin: 12px 0 16px 25px; padding-left: 0; }
+li { margin-bottom: 6px; }
+
+a {
+    color: var(--color-primary-main);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(var(--rgb-primary-main), 0.3);
+    transition: border-color 0.2s, color 0.2s;
+}
+a:hover {
+    color: var(--color-primary-dark);
+    border-bottom-color: var(--color-primary-dark);
+}
+
+/* === 3. コード表示 === */
+code {
+    background-color: #e8eaf6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    color: #c2185b;
+    font-size: 0.9em;
+}
+
+pre {
+    background-color: var(--color-bg-code);
+    color: var(--color-text-code);
+    padding: 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 20px 0;
+    border: 1px solid #37474f;
+    font-size: 0.9em; /* コードは少し小さめが読みやすい */
+    line-height: 1.5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+pre code {
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+    border-radius: 0;
+}
+
+/* === 4. テーブルとステータス === */
+.table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 30px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+    background-color: #fff;
+    border-radius: 6px;
+    font-size: 0.95em; /* 表内の文字をわずかに小さくして情報を詰め込む */
+}
+
+th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+thead {
+    background-color: var(--color-primary-main);
+    color: #ffffff;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+thead th:first-child { border-top-left-radius: 6px; }
+thead th:last-child { border-top-right-radius: 6px; }
+
+th { font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+
+tbody tr:hover { background-color: #fafafa; }
+
+/* ステータスバッジ */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.8em;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.status-pass { color: #1b5e20; background-color: #e8f5e9; border: 1px solid #c8e6c9; }
+.status-fail { color: #b71c1c; background-color: #ffebee; border: 1px solid #ffcdd2; }
+.status-warn { color: #bf360c; background-color: #fbe9e7; border: 1px solid #ffccbc; }
+.status-info { color: #01579b; background-color: #e1f5fe; border: 1px solid #b3e5fc; }
+
+/* === 5. 区切り線と引用 === */
+hr {
+    border: 0;
+    border-top: 1px dashed #bdbdbd;
+    margin: 35px 0;
+}
+
+blockquote {
+    border-left: 5px solid var(--color-primary-main);
+    margin: 20px 0;
+    padding: 12px 20px;
+    background-color: var(--color-primary-bg-weak);
+    color: var(--color-primary-text-accent);
+    border-radius: 0 6px 6px 0;
+    font-size: 0.95em;
+}
+
+/* === 6. レスポンシブ対応 === */
+@media (max-width: 768px) {
+    body {
+        margin: 0;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 0;
+        border: none;
+        padding: 20px;
+        box-shadow: none;
+    }
+    h1 { font-size: 1.8em; }
+    h2 { font-size: 1.5em; }
+    h3 { font-size: 1.25em; } /* モバイル用に調整 */
+    pre { padding: 15px; }
+}
+
+/* === 7. 印刷設定 === */
+@media print {
+    html { background-color: #fff; }
+    body {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+        font-size: 11pt; /* 印刷時のベースフォントサイズ */
+    }
+    a { text-decoration: none; color: #000; }
+    pre, code {
+        border: 1px solid #ccc;
+        background-color: #f9f9f9 !important;
+        color: #000;
+    }
+    thead {
+        background-color: #ddd !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .badge {
+        border: 1px solid #ccc;
+        background-color: #fff !important;
+        color: #000 !important;
+    }
+    table, pre, blockquote { page-break-inside: avoid; }
+    h2, h3 { page-break-after: avoid; }
+}
