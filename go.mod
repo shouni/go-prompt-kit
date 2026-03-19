@@ -2,7 +2,10 @@ module github.com/shouni/go-prompt-kit
 
 go 1.26
 
-require github.com/stretchr/testify v1.11.1
+require (
+	github.com/stretchr/testify v1.11.1
+	github.com/yuin/goldmark v1.7.17
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
