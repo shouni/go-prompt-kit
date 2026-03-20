@@ -17,9 +17,9 @@ func WithEnableHardWraps(enable bool) Option {
 	}
 }
 
-// WithMode は、Builder のモードを設定します。
-func WithMode(mode string) Option {
+// WithHTMLMode は、Builder のモードを HTML に設定します。
+func WithHTMLMode() Option {
 	return func(c *Builder) {
-		c.config.mode = mode
+		c.config.mode = htmlMode // builder.go 内の定数を使用
 	}
 }
