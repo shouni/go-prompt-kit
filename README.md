@@ -27,7 +27,7 @@
 * **🎨 Style-Injected Rendering**: 組み込みの CSS やテンプレートを使用して、即座に「見栄えの良い」成果物を出力。
 * **🧩 Modular Architecture**: Converter, Renderer, Runner が分離されており、特定のロジックのみの差し替えが可能。
 
------
+---
 
 ## 🏗 プロジェクトレイアウト (Project Layout)
 
@@ -47,7 +47,7 @@ go-prompt-kit/
     └── loader.go      #   - fs.FS からのアセット自動スキャン
 ```
 
------
+---
 
 ## 🤝 主な依存関係 (Dependencies)
 
