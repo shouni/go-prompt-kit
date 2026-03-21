@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/shouni/go-prompt-kit/mdcast/runner"
+	"github.com/shouni/go-prompt-kit/md/runner"
 )
 
 // --- Mock 定義 (Context を排除した最新の ports 定義に準拠) ---

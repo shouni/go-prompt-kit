@@ -3,10 +3,10 @@ package builder
 import (
 	"fmt"
 
-	"github.com/shouni/go-prompt-kit/mdcast/converter"
-	"github.com/shouni/go-prompt-kit/mdcast/ports"
-	"github.com/shouni/go-prompt-kit/mdcast/renderer"
-	"github.com/shouni/go-prompt-kit/mdcast/runner"
+	"github.com/shouni/go-prompt-kit/md/converter"
+	"github.com/shouni/go-prompt-kit/md/ports"
+	"github.com/shouni/go-prompt-kit/md/renderer"
+	"github.com/shouni/go-prompt-kit/md/runner"
 )
 
 const htmlMode = "html"

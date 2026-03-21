@@ -37,7 +37,7 @@
 go-prompt-kit/
 ├── prompts/           # 【INPUT】プロンプト構築
 │   └── builder.go     #   - モード管理とテンプレート実行
-├── mdcast/            # 【OUTPUT】ドキュメント配信 (Cast)
+├── md/                # 【OUTPUT】ドキュメント配信 (Cast)
 │   ├── ports/         #   - 抽象インターフェース定義
 │   ├── converter/     #   - Markdown 解析・タイトル抽出
 │   ├── renderer/      #   - HTML レンダリング (CSS/Template)
