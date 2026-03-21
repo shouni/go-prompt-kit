@@ -21,7 +21,7 @@
 * **🛠 Template-based Builder**: `text/template` を内包し、構造体データを注入して動的にプロンプトを生成。
 * **🛡 Collision Detection**: モード名の衝突や空ファイルを初期化時に検知する堅牢なバリデーション。
 
-### 📡 [mdcast] ドキュメント配信エンジン
+### 📡 [md] ドキュメント配信エンジン
 
 * **📑 Markdown to HTML**: AI のレスポンス（Markdown）を、スタイル済みの完全な HTML ドキュメントへ変換。
 * **🎨 Style-Injected Rendering**: 組み込みの CSS やテンプレートを使用して、即座に「見栄えの良い」成果物を出力。
