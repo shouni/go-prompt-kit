@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/shouni/go-prompt-kit/mdcast/ports"
+	"github.com/shouni/go-prompt-kit/md/ports"
 )
 
 // MarkdownToHtmlRunner は Runner インターフェースを実装する具体的な構造体です。
