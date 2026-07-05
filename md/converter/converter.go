@@ -1,9 +1,9 @@
+// Package converter は、MarkdownをHTMLフラグメントへ変換するコンバーターを提供します。
 package converter
 
 import (
 	"bufio"
 	"bytes"
-	_ "embed"
 	"fmt"
 	"log/slog"
 	"regexp"

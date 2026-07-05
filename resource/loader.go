@@ -1,3 +1,5 @@
+// Package resource は、埋め込みファイルシステムからプレフィックス一致するファイルを
+// 読み込むユーティリティを提供します。
 package resource
 
 import (

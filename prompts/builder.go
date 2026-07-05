@@ -1,3 +1,5 @@
+// Package prompts は、埋め込みテンプレートからモードに応じたプロンプトを
+// 構築するビルダーを提供します。
 package prompts
 
 import (
