@@ -8,11 +8,11 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/shouni/go-prompt-kit.svg)](https://pkg.go.dev/github.com/shouni/go-prompt-kit)
 [![Status](https://img.shields.io/badge/Status-Completed-brightgreen)](#)
 
-## 🚀 概要 (About) - AI 連携のインプットからアウトプットまでを一気通貫で。
+## 🚀 概要 (About) - AI 連携のインプットからアウトプットまでを一気通貫で
 
-**Go Prompt Kit** は、AI（Gemini 等）へのプロンプト管理から、AI から返ってきた Markdown レスポンスの美しいドキュメント化までをサポートする Go 言語向けツールキットです。
+**Go Prompt Kit** は、AI（Gemini 等）へのプロンプト管理から、返ってきた Markdown レスポンスの美しいドキュメント化までをサポートする Go 言語向けツールキットです。
 
-「プロンプト構築」と「洗練されたドキュメント配信（Cast）」を組み合わせることで、AI 連携アプリケーションの開発効率と保守性を最大化します。
+「プロンプト構築」と「洗練されたドキュメント配信」を組み合わせることで、AI 連携アプリケーションの開発効率と保守性を最大化します。
 
 ---
 
@@ -40,7 +40,7 @@
 go-prompt-kit/
 ├── prompts/           # 【INPUT】プロンプト構築
 │   └── builder.go     #   - モード管理とテンプレート実行
-├── md/                # 【OUTPUT】ドキュメント配信 (Cast)
+├── md/                # 【OUTPUT】ドキュメント配信
 │   ├── ports/         #   - 抽象インターフェース定義
 │   ├── converter/     #   - Markdown 解析・タイトル抽出
 │   ├── renderer/      #   - HTML レンダリング (CSS/Template)
@@ -54,6 +54,7 @@ go-prompt-kit/
 
 ## 🤝 主な依存関係 (Dependencies)
 
+* [`github.com/yuin/goldmark`](https://github.com/yuin/goldmark): Markdown 解析・HTML変換エンジン
 * `text/template`: Go 標準のテンプレートエンジン
 * `io/fs`: 抽象化されたファイルシステムインターフェース
 * `embed`: 静的アセットのバイナリ埋め込み
