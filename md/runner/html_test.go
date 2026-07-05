@@ -33,15 +33,15 @@ func (m *mockRenderer) Render(w io.Writer, fragment []byte, locale string, title
 
 // --- テストケース ---
 
-func TestMarkdownToHtmlRunner_Run(t *testing.T) {
+func TestMarkdownToHTMLRunner_Run(t *testing.T) {
 	t.Run("正常系: タイトルが引数で指定されている場合", func(t *testing.T) {
 		converter := &mockConverter{
-			convertFunc: func(markdown []byte) ([]byte, error) {
+			convertFunc: func(_ []byte) ([]byte, error) {
 				return []byte("<p>hello</p>"), nil
 			},
 		}
 		renderer := &mockRenderer{
-			renderFunc: func(w io.Writer, fragment []byte, locale string, title string) error {
+			renderFunc: func(w io.Writer, fragment []byte, _ string, title string) error {
 				if title != "Specified Title" {
 					t.Errorf("期待したタイトルと異なります: %s", title)
 				}
@@ -51,7 +51,7 @@ func TestMarkdownToHtmlRunner_Run(t *testing.T) {
 			},
 		}
 
-		r := runner.NewMarkdownToHtmlRunner(converter, renderer)
+		r := runner.NewMarkdownToHTMLRunner(converter, renderer)
 		buf, err := r.Run("Specified Title", []byte("# Header\nContent"))
 
 		if err != nil {
@@ -66,15 +66,15 @@ func TestMarkdownToHtmlRunner_Run(t *testing.T) {
 	t.Run("正常系: タイトル指定がなく、Markdownから抽出する場合", func(t *testing.T) {
 		const extractedTitle = "Extracted Title"
 		converter := &mockConverter{
-			convertFunc: func(markdown []byte) ([]byte, error) {
+			convertFunc: func(_ []byte) ([]byte, error) {
 				return []byte("fragment"), nil
 			},
-			extractTitleFunc: func(markdown []byte) string {
+			extractTitleFunc: func(_ []byte) string {
 				return extractedTitle
 			},
 		}
 		renderer := &mockRenderer{
-			renderFunc: func(w io.Writer, fragment []byte, locale string, title string) error {
+			renderFunc: func(_ io.Writer, _ []byte, _ string, title string) error {
 				if title != extractedTitle {
 					t.Errorf("抽出されたタイトルが使用されていません。got: %s, want: %s", title, extractedTitle)
 				}
@@ -82,7 +82,7 @@ func TestMarkdownToHtmlRunner_Run(t *testing.T) {
 			},
 		}
 
-		r := runner.NewMarkdownToHtmlRunner(converter, renderer)
+		r := runner.NewMarkdownToHTMLRunner(converter, renderer)
 		_, err := r.Run("", []byte("# "+extractedTitle))
 		if err != nil {
 			t.Errorf("エラーが発生しました: %v", err)
@@ -91,7 +91,7 @@ func TestMarkdownToHtmlRunner_Run(t *testing.T) {
 
 	t.Run("境界値: 空のMarkdown入力", func(t *testing.T) {
 		// 空入力時は早期リターンするため、モックが呼ばれないことを確認
-		r := runner.NewMarkdownToHtmlRunner(&mockConverter{}, &mockRenderer{})
+		r := runner.NewMarkdownToHTMLRunner(&mockConverter{}, &mockRenderer{})
 		buf, err := r.Run("Title", []byte(""))
 
 		if err != nil {
@@ -105,12 +105,12 @@ func TestMarkdownToHtmlRunner_Run(t *testing.T) {
 	t.Run("異常系: コンバーターがエラーを返す", func(t *testing.T) {
 		expectedErr := errors.New("convert error")
 		converter := &mockConverter{
-			convertFunc: func(markdown []byte) ([]byte, error) {
+			convertFunc: func(_ []byte) ([]byte, error) {
 				return nil, expectedErr
 			},
 		}
 
-		r := runner.NewMarkdownToHtmlRunner(converter, &mockRenderer{})
+		r := runner.NewMarkdownToHTMLRunner(converter, &mockRenderer{})
 		_, err := r.Run("Title", []byte("data"))
 
 		if !errors.Is(err, expectedErr) {
@@ -120,17 +120,17 @@ func TestMarkdownToHtmlRunner_Run(t *testing.T) {
 
 	t.Run("異常系: レンダラーがエラーを返す", func(t *testing.T) {
 		converter := &mockConverter{
-			convertFunc:      func(markdown []byte) ([]byte, error) { return []byte("ok"), nil },
-			extractTitleFunc: func(markdown []byte) string { return "title" },
+			convertFunc:      func(_ []byte) ([]byte, error) { return []byte("ok"), nil },
+			extractTitleFunc: func(_ []byte) string { return "title" },
 		}
 		expectedErr := errors.New("render error")
 		renderer := &mockRenderer{
-			renderFunc: func(w io.Writer, fragment []byte, locale string, title string) error {
+			renderFunc: func(_ io.Writer, _ []byte, _ string, _ string) error {
 				return expectedErr
 			},
 		}
 
-		r := runner.NewMarkdownToHtmlRunner(converter, renderer)
+		r := runner.NewMarkdownToHTMLRunner(converter, renderer)
 		_, err := r.Run("", []byte("data"))
 
 		if !errors.Is(err, expectedErr) {

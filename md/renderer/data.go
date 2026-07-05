@@ -1,3 +1,5 @@
+// Package renderer は、HTMLフラグメントを完全なHTMLドキュメントとして
+// レンダリングするテンプレートエンジンを提供します。
 package renderer
 
 import (

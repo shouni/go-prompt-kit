@@ -1,3 +1,5 @@
+// Package builder は、Converter/Renderer/Runnerを組み立てて
+// MarkdownToHTMLRunnerを構築するファクトリを提供します。
 package builder
 
 // Option は Builder の設定を適用する関数型です。

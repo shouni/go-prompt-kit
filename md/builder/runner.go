@@ -51,7 +51,7 @@ func New(options ...Option) (*Builder, error) {
 	// 4. Rendererの構築
 	r, err := renderer.NewRenderer()
 	if err != nil {
-		return nil, fmt.Errorf("Rendererの初期化エラー: %w", err)
+		return nil, fmt.Errorf("rendererの初期化エラー: %w", err)
 	}
 
 	builder.converter = c
@@ -64,7 +64,7 @@ func New(options ...Option) (*Builder, error) {
 func (b *Builder) BuildRunner() (ports.Runner, error) {
 	switch b.config.mode {
 	case htmlMode, "":
-		return runner.NewMarkdownToHtmlRunner(b.converter, b.renderer), nil
+		return runner.NewMarkdownToHTMLRunner(b.converter, b.renderer), nil
 	default:
 		return nil, fmt.Errorf("未サポートのモード: %s", b.config.mode)
 	}

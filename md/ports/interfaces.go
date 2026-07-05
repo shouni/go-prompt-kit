@@ -1,3 +1,4 @@
+// Package ports は、Markdown変換・レンダリング処理が依存するインターフェース（ポート）を定義します。
 package ports
 
 import (

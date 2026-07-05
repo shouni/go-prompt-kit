@@ -1,3 +1,5 @@
+// Package runner は、Markdownの変換とレンダリングを統合し、
+// 完全なHTMLドキュメントを生成するランナーを提供します。
 package runner
 
 import (
@@ -8,15 +10,15 @@ import (
 	"github.com/shouni/go-prompt-kit/md/ports"
 )
 
-// MarkdownToHtmlRunner は Runner インターフェースを実装する具体的な構造体です。
-type MarkdownToHtmlRunner struct {
+// MarkdownToHTMLRunner は Runner インターフェースを実装する具体的な構造体です。
+type MarkdownToHTMLRunner struct {
 	converter ports.Converter
 	renderer  ports.Renderer
 }
 
-// NewMarkdownToHtmlRunner は新しいRunnerを初期化し、依存関係を注入します。
-func NewMarkdownToHtmlRunner(converter ports.Converter, renderer ports.Renderer) *MarkdownToHtmlRunner {
-	return &MarkdownToHtmlRunner{
+// NewMarkdownToHTMLRunner は新しいRunnerを初期化し、依存関係を注入します。
+func NewMarkdownToHTMLRunner(converter ports.Converter, renderer ports.Renderer) *MarkdownToHTMLRunner {
+	return &MarkdownToHTMLRunner{
 		converter: converter,
 		renderer:  renderer,
 	}
@@ -25,7 +27,7 @@ func NewMarkdownToHtmlRunner(converter ports.Converter, renderer ports.Renderer)
 // Run は、MarkdownバイトスライスをHTMLフラグメントに変換し、
 // 指定されたタイトルとロケールを使用して完全なHTMLドキュメントとしてレンダリングします。
 // title 引数を string 型に戻します。
-func (r *MarkdownToHtmlRunner) Run(title string, markdown []byte) (*bytes.Buffer, error) {
+func (r *MarkdownToHTMLRunner) Run(title string, markdown []byte) (*bytes.Buffer, error) {
 	const defaultTitle = "Document"
 	const defaultLocale = "ja-jp" // ロケールはハードコード
 
