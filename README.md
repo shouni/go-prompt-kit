@@ -27,6 +27,7 @@
 ### 📡 [md] ドキュメント配信エンジン
 
 * **📑 Markdown to HTML**: AI のレスポンス（Markdown）を、スタイル済みの完全な HTML ドキュメントへ変換。
+* **🧾 JSON to HTML**: 構造化出力（JSON）を、呼び出し側が指定した `html/template` で任意の形にHTMLフラグメント化。スキーマやテンプレートはライブラリ側では関知しない汎用設計。
 * **🎨 Style-Injected Rendering**: 組み込みの CSS やテンプレートを使用して、即座に「見栄えの良い」成果物を出力。
 * **🧩 Modular Architecture**: Converter, Renderer, Runner が分離されており、特定のロジックのみの差し替えが可能。
 
@@ -43,6 +44,7 @@ go-prompt-kit/
 ├── md/                # 【OUTPUT】ドキュメント配信
 │   ├── ports/         #   - 抽象インターフェース定義
 │   ├── converter/     #   - Markdown 解析・タイトル抽出
+│   ├── jsonconverter/ #   - JSON→HTMLフラグメント変換（テンプレートは呼び出し側が注入）
 │   ├── renderer/      #   - HTML レンダリング (CSS/Template)
 │   ├── runner/        #   - 変換ワークフローの実行
 │   └── builder/       #   - 具象インスタンスの構築
