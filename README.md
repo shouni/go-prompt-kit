@@ -32,7 +32,7 @@
 
 * **📑 Markdown to HTML**: AI のレスポンスを、スタイル済みの完全な HTML ドキュメントへ変換。
 * **🧾 JSON to HTML**: 構造化出力を、呼び出し側が指定した `html/template` で任意の形にHTMLフラグメント化。スキーマやテンプレートはライブラリ側では関知しない汎用設計。
-* **🎨 Style-Injected Rendering**: 組み込みの CSS とテンプレートで即座に成果物を出力。どちらも差し替え可能。
+* **🎨 Style-Injected Rendering**: 組み込みの CSS とテンプレートで即座に成果物を出力。差し替えも、既定を保った追記も可能。
 * **🧩 Modular Architecture**: Converter, Renderer, Runner が分離され、特定のロジックのみを差し替え可能。
 * **🌲 AST-based Title Extraction**: 構文木からタイトルを抽出するため、コードブロック内の `#` や setext 形式も正しく判定。
 
@@ -141,7 +141,9 @@ buf, err := runner.Run("", markdown)
 ### JSON を任意のテンプレートで HTML 化する
 
 `WithConverter` で任意の `ports.Converter` を注入できます。
-CSS を自前のものへ差し替える場合は `WithRendererOptions` を使います。
+CSS は `WithRendererOptions` から指定します。`renderer.WithCSS` は既定の
+スタイルシートを置き換え、`renderer.WithExtraCSS` は既定の後ろへ連結します
+（既定の体裁を保ったまま独自の部品スタイルだけを足したい場合はこちら）。
 
 ```go
 tpl := template.Must(template.New("fragment").Parse(fragmentHTML))

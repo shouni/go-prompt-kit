@@ -139,3 +139,82 @@ func TestRenderer_Render_EscapesTitle(t *testing.T) {
 	// 本文フラグメントは template.HTML のためエスケープされない
 	assert.Contains(t, got, "<p>ok</p>")
 }
+
+func TestNewRenderer_WithExtraCSS(t *testing.T) {
+	t.Run("既定CSSの後ろへ連結される", func(t *testing.T) {
+		r, err := NewRenderer(WithExtraCSS(".finding { color: red; }"))
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		require.NoError(t, r.Render(&buf, []byte("<p>x</p>"), "ja", "T"))
+
+		got := buf.String()
+		// 既定CSSが残っていること
+		assert.Contains(t, got, "--color-primary-main")
+		// 追加分も含まれること
+		assert.Contains(t, got, ".finding { color: red; }")
+		// 追加分が後ろにあること（同じセレクタなら上書きできる）
+		assert.Less(t, strings.Index(got, "--color-primary-main"), strings.Index(got, ".finding"))
+	})
+
+	t.Run("style ブロックは1つだけになる", func(t *testing.T) {
+		r, err := NewRenderer(WithExtraCSS("body { color: red; }"))
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		require.NoError(t, r.Render(&buf, []byte("<p>x</p>"), "ja", "T"))
+
+		assert.Equal(t, 1, strings.Count(buf.String(), "<style>"))
+	})
+
+	t.Run("WithCSSと併用すると指定した土台の後ろへ足される", func(t *testing.T) {
+		r, err := NewRenderer(
+			WithCSS("body { margin: 0; }"),
+			WithExtraCSS(".x { color: blue; }"),
+		)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		require.NoError(t, r.Render(&buf, []byte("<p>x</p>"), "ja", "T"))
+
+		got := buf.String()
+		assert.Contains(t, got, "body { margin: 0; }")
+		assert.Contains(t, got, ".x { color: blue; }")
+		assert.NotContains(t, got, "--color-primary-main")
+		assert.Less(t, strings.Index(got, "body { margin: 0; }"), strings.Index(got, ".x {"))
+	})
+
+	t.Run("複数回指定すると指定順に連結される", func(t *testing.T) {
+		r, err := NewRenderer(
+			WithCSS("/*base*/"),
+			WithExtraCSS(".a {}"),
+			WithExtraCSS(".b {}"),
+		)
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		require.NoError(t, r.Render(&buf, []byte(""), "ja", "T"))
+
+		got := buf.String()
+		assert.Less(t, strings.Index(got, "/*base*/"), strings.Index(got, ".a {}"))
+		assert.Less(t, strings.Index(got, ".a {}"), strings.Index(got, ".b {}"))
+	})
+
+	t.Run("空文字は無視される", func(t *testing.T) {
+		r, err := NewRenderer(WithCSS("body{}"), WithExtraCSS(""))
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		require.NoError(t, r.Render(&buf, []byte(""), "ja", "T"))
+		assert.Contains(t, buf.String(), "<style>body{}</style>")
+	})
+
+	t.Run("土台が空なら追加分だけになる", func(t *testing.T) {
+		r, err := NewRenderer(WithCSS(""), WithExtraCSS(".only {}"))
+		require.NoError(t, err)
+
+		var buf bytes.Buffer
+		require.NoError(t, r.Render(&buf, []byte(""), "ja", "T"))
+		assert.Contains(t, buf.String(), "<style>.only {}</style>")
+	})
+}
