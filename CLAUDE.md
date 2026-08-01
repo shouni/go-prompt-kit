@@ -40,7 +40,7 @@ input bytes ──> Converter.Convert() ──> HTML fragment ──> Renderer.R
 ```
 
 - **Converter** (`md/converter` for Markdown via goldmark, `md/jsonconverter` for JSON via a caller-supplied `html/template`) produces a *fragment*, never a whole document.
-- **Renderer** (`md/renderer`) wraps a fragment in `template.html` and inlines `default.css`, both `go:embed`-ed in `md/renderer/data.go`. `WithTemplate` / `WithTemplateText` / `WithCSS` override either one.
+- **Renderer** (`md/renderer`) wraps a fragment in `template.html` and inlines `default.css`, both `go:embed`-ed in `md/renderer/data.go`. `WithTemplate` / `WithTemplateText` / `WithCSS` override either one; `WithExtraCSS` appends to whichever stylesheet is in effect (later wins, so callers can add component styles without copying the 270-line default).
 - **Runner** (`md/runner`) joins the two. `DocumentRunner.Run` resolves the title in this order: explicit `title` argument → `Converter.ExtractTitleFromMarkdown(input)` → the default title. `lang` and the default title come from `WithLang` / `WithDefaultTitle` (defaults `"ja-jp"` and `"Document"`).
 - **Builder** (`md/builder`) is a convenience factory. It builds the Markdown converter and the embedded-asset renderer *only when neither is injected*, so `WithConverter` / `WithRenderer` let a JSON pipeline go through the same factory.
 

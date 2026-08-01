@@ -8,9 +8,10 @@ import (
 // config は Renderer の構築設定を保持します。
 // tpl / css が nil のままなら、埋め込みアセット（template.html / default.css）が使われます。
 type config struct {
-	tpl *template.Template
-	css *template.CSS
-	err error
+	tpl      *template.Template
+	css      *template.CSS
+	extraCSS []string
+	err      error
 }
 
 // Option は Renderer の設定オプションを定義する関数型です。
@@ -48,5 +49,20 @@ func WithCSS(css string) Option {
 	return func(c *config) {
 		style := template.CSS(css)
 		c.css = &style
+	}
+}
+
+// WithExtraCSS は、土台となるスタイルシートの後ろへ追加のスタイルを連結します。
+// 既定の見た目を保ったまま独自の部品スタイルだけを足したい場合に使います。
+// 土台は WithCSS を指定していればその内容、指定がなければ埋め込みの default.css です。
+//
+// 後ろへ足されるため、同じセレクタを書けば土台の指定を上書きできます。
+// 複数回指定した場合は指定順に連結されます。
+func WithExtraCSS(css string) Option {
+	return func(c *config) {
+		if css == "" {
+			return
+		}
+		c.extraCSS = append(c.extraCSS, css)
 	}
 }

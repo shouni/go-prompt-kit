@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"strings"
 )
 
 // Renderer は、HTMLフラグメントを完全なHTMLドキュメントへ組み立てる実装です。
@@ -34,21 +35,37 @@ func NewRenderer(opts ...Option) (*Renderer, error) {
 	}
 
 	// CSSの事前読み込み（キャッシュ化）
-	var css template.CSS
+	base := ""
 	if cfg.css != nil {
-		css = *cfg.css
+		base = string(*cfg.css)
 	} else {
 		cssBytes, err := assets.ReadFile("default.css")
 		if err != nil {
 			return nil, fmt.Errorf("CSSファイルの読み込みエラー: %w", err)
 		}
-		css = template.CSS(cssBytes)
+		base = string(cssBytes)
 	}
 
 	return &Renderer{
 		tpl: tpl,
-		css: css,
+		css: template.CSS(joinCSS(base, cfg.extraCSS)),
 	}, nil
+}
+
+// joinCSS は土台のスタイルシートへ追加分を連結します。
+// 後ろにあるほど優先されるため、追加分は土台の指定を上書きできます。
+func joinCSS(base string, extra []string) string {
+	parts := make([]string, 0, 1+len(extra))
+	if base != "" {
+		parts = append(parts, base)
+	}
+	for _, css := range extra {
+		if css != "" {
+			parts = append(parts, css)
+		}
+	}
+
+	return strings.Join(parts, "\n")
 }
 
 // Render は Renderer 用の実装です。
