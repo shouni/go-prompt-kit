@@ -25,6 +25,7 @@
 * **🧱 Partial Templates**: 共通の指示を部品として切り出し、複数モードから共有。
 * **🔧 Custom Functions**: 独自のテンプレート関数を登録し、本文と partial の双方から利用。
 * **🎯 Default Mode**: モード未指定・未知のモードのフォールバック先を指定。
+* **🔍 Expand**: データなしで partial 展開済みの本文を取得。カタログ表示や本文の検査に。
 * **🛡 Collision Detection**: 名前の衝突・空ファイル・定義の重複を初期化時に検知。
 
 ### 📡 [md] ドキュメント配信エンジン
@@ -99,6 +100,23 @@ prompt, err := builder.Build("", data) // 未指定なので "default" が使わ
 
 partial の接頭辞は `WithPartialPrefix` で変更でき、空文字を指定すると
 partial 判定自体を行わず、全エントリがモードとして公開されます。
+
+### 送るプロンプトの中身を確認する
+
+`Expand` は partial を展開した本文を、`{{.Field}}` を評価せずに返します。
+データを用意せずに「実際に送られるプロンプトの構造」を確認できるため、
+プロンプトのカタログ表示や、本文に書かれた制約の検査に使えます。
+
+```go
+text, err := builder.Expand("review")
+// 対象: {{.Target}}
+// 出力形式: JSON      ← partial は展開済み
+```
+
+`Build` と同じ構文木から組み立てるので、結果は実際に送られる本文と構造的に一致します。
+入れ子の partial は再帰的に解決されるため定義順に依存せず、循環参照は
+`ErrCyclicTemplate` として検出されます。データの起点が変わる
+`{{template "x" .Foo}}` は展開できないため `ErrNotExpandable` を返します。
 
 ### Markdown を HTML ドキュメントへ変換する
 
