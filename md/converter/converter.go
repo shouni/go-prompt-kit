@@ -2,48 +2,42 @@
 package converter
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"strings"
 
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
-	"github.com/yuin/goldmark/renderer"
+	"github.com/yuin/goldmark/text"
 )
-
-// ATX形式の見出し（# Title）にマッチする正規表現です。
-// 1個から6個の # で始まり、その後に1つ以上の空白、そしてタイトル文字列が続くパターンです。
-var atxHeadingRegex = regexp.MustCompile(`^#{1,6}\s+(.+)`)
 
 // GoldmarkConverter は goldmark ライブラリを使用した実体です。
 type GoldmarkConverter struct {
-	md              goldmark.Markdown
-	rendererOptions []renderer.Option
+	md goldmark.Markdown
 }
 
 // NewGoldmarkConverter は新しいインスタンスを作成します。
 func NewGoldmarkConverter(opts ...Option) *GoldmarkConverter {
-	c := &GoldmarkConverter{
-		rendererOptions: []renderer.Option{},
-	}
-
+	cfg := &config{}
 	for _, opt := range opts {
-		opt(c)
+		opt(cfg)
 	}
 
-	md := goldmark.New(
-		goldmark.WithExtensions(
-			extension.GFM,
-		),
-		goldmark.WithRendererOptions(c.rendererOptions...),
-	)
+	// GFM は常に有効にし、オプションで指定された拡張を追加します。
+	extensions := append([]goldmark.Extender{extension.GFM}, cfg.extensions...)
 
-	c.md = md
-	c.rendererOptions = nil
-	return c
+	goldmarkOptions := []goldmark.Option{
+		goldmark.WithExtensions(extensions...),
+		goldmark.WithParserOptions(cfg.parserOptions...),
+		goldmark.WithRendererOptions(cfg.rendererOptions...),
+	}
+	goldmarkOptions = append(goldmarkOptions, cfg.goldmarkOptions...)
+
+	return &GoldmarkConverter{
+		md: goldmark.New(goldmarkOptions...),
+	}
 }
 
 // Convert は Markdown を HTML に変換します。
@@ -57,25 +51,65 @@ func (c *GoldmarkConverter) Convert(input []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// ExtractTitleFromMarkdown は、正規表現を使って最初の見出しをスマートに抜き出す。
+// ExtractTitleFromMarkdown は、最初の見出しのテキストをタイトルとして抽出します。
+// goldmark のパーサーで構文木を構築してから探索するため、コードブロック内の
+// "#" で始まる行や、閉じの "#" 列、setext形式の見出しも正しく扱えます。
+// 見出しが存在しない場合は空文字を返します。
 func (c *GoldmarkConverter) ExtractTitleFromMarkdown(input []byte) string {
-	scanner := bufio.NewScanner(bytes.NewReader(input))
+	if len(input) == 0 {
+		return ""
+	}
 
-	for scanner.Scan() {
-		// インデントされている可能性も考慮して TrimSpace
-		line := strings.TrimSpace(scanner.Text())
+	doc := c.md.Parser().Parse(text.NewReader(input))
 
-		// 正規表現で見出し行をキャプチャする
-		matches := atxHeadingRegex.FindStringSubmatch(line)
-		if len(matches) > 1 {
-			// matches[0] は行全体、matches[1] がカッコ内のタイトル部分なのだ
-			return strings.TrimSpace(matches[1])
+	var title string
+	err := ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+
+		heading, ok := n.(*ast.Heading)
+		if !ok {
+			return ast.WalkContinue, nil
+		}
+
+		title = strings.TrimSpace(inlineText(heading, input))
+		return ast.WalkStop, nil
+	})
+	if err != nil {
+		slog.Warn("Markdownタイトル抽出中にエラーが発生しました", "error", err)
+		return ""
+	}
+
+	return title
+}
+
+// inlineText は、ノード配下のインライン要素からプレーンテキストを再帰的に収集します。
+// 強調やリンクなどの装飾記法は取り除かれ、その中身のテキストだけが残ります。
+func inlineText(n ast.Node, source []byte) string {
+	var sb strings.Builder
+
+	var walk func(ast.Node)
+	walk = func(node ast.Node) {
+		for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+			switch v := child.(type) {
+			case *ast.Text:
+				sb.Write(v.Segment.Value(source))
+				// 見出しが複数行にまたがる場合に単語が繋がらないよう空白を補います。
+				if v.SoftLineBreak() || v.HardLineBreak() {
+					sb.WriteByte(' ')
+				}
+			case *ast.String:
+				sb.Write(v.Value)
+			case *ast.AutoLink:
+				sb.Write(v.URL(source))
+			default:
+				// Emphasis / Link / CodeSpan などは子のテキストを辿ります。
+				walk(child)
+			}
 		}
 	}
+	walk(n)
 
-	if err := scanner.Err(); err != nil {
-		slog.Warn("Markdownタイトル抽出中にエラーが発生しました", "error", err)
-	}
-
-	return ""
+	return sb.String()
 }
