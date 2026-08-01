@@ -10,7 +10,7 @@
 
 ## 🚀 概要 (About) - AI 連携のインプットからアウトプットまでを一気通貫で
 
-**Go Prompt Kit** は、AI（Gemini 等）へのプロンプト管理から、返ってきた Markdown レスポンスの美しいドキュメント化までをサポートする Go 言語向けツールキットです。
+**Go Prompt Kit** は、AI（Gemini 等）へのプロンプト管理から、返ってきたレスポンス（Markdown / JSON）の美しいドキュメント化までをサポートする Go 言語向けツールキットです。
 
 「プロンプト構築」と「洗練されたドキュメント配信」を組み合わせることで、AI 連携アプリケーションの開発効率と保守性を最大化します。
 
@@ -20,20 +20,20 @@
 
 ### 📂 [prompts] プロンプトエンジン
 
-* **📦 Dynamic Resource Loader**: `embed.FS` からファイルを自動スキャンし、プロンプトモードを自動マッピング。サブディレクトリの再帰読み込みと拡張子フィルタにも対応。
-* **🛠 Template-based Builder**: `text/template` を内包し、構造体データを注入して動的にプロンプトを生成。
-* **🧱 Partial Templates**: `_` で始まるファイルは部品として登録され、`{{template "_name" .}}` で複数モードから共有できます（接頭辞は変更可能）。
-* **🔧 Custom Functions**: `WithFuncs` でテンプレート関数を登録し、モードと partial の双方から利用できます。
-* **🎯 Default Mode**: `WithDefaultMode` で、モード未指定や未知のモードのフォールバック先を指定できます。
-* **🛡 Collision Detection**: モード名の衝突・空ファイル・`{{define}}` の重複定義を初期化時に検知する堅牢なバリデーション。
+* **📦 Dynamic Resource Loader**: `embed.FS` からプロンプトを自動スキャンし、モード名へマッピング（再帰・拡張子フィルタ対応）。
+* **🛠 Template-based Builder**: `text/template` にデータを注入して動的にプロンプトを生成。
+* **🧱 Partial Templates**: 共通の指示を部品として切り出し、複数モードから共有。
+* **🔧 Custom Functions**: 独自のテンプレート関数を登録し、本文と partial の双方から利用。
+* **🎯 Default Mode**: モード未指定・未知のモードのフォールバック先を指定。
+* **🛡 Collision Detection**: 名前の衝突・空ファイル・定義の重複を初期化時に検知。
 
 ### 📡 [md] ドキュメント配信エンジン
 
-* **📑 Markdown to HTML**: AI のレスポンス（Markdown）を、スタイル済みの完全な HTML ドキュメントへ変換。
-* **🧾 JSON to HTML**: 構造化出力（JSON）を、呼び出し側が指定した `html/template` で任意の形にHTMLフラグメント化。スキーマやテンプレートはライブラリ側では関知しない汎用設計。
-* **🎨 Style-Injected Rendering**: 組み込みの CSS やテンプレートで即座に「見栄えの良い」成果物を出力。テンプレートと CSS はどちらも差し替え可能。
-* **🧩 Modular Architecture**: Converter, Renderer, Runner が分離されており、特定のロジックのみの差し替えが可能。
-* **🌲 AST-based Title Extraction**: 構文木を辿って最初の見出しを抽出するため、コードブロック内の `#` や setext 形式の見出しも正しく判定します。
+* **📑 Markdown to HTML**: AI のレスポンスを、スタイル済みの完全な HTML ドキュメントへ変換。
+* **🧾 JSON to HTML**: 構造化出力を、呼び出し側が指定した `html/template` で任意の形にHTMLフラグメント化。スキーマやテンプレートはライブラリ側では関知しない汎用設計。
+* **🎨 Style-Injected Rendering**: 組み込みの CSS とテンプレートで即座に成果物を出力。どちらも差し替え可能。
+* **🧩 Modular Architecture**: Converter, Renderer, Runner が分離され、特定のロジックのみを差し替え可能。
+* **🌲 AST-based Title Extraction**: 構文木からタイトルを抽出するため、コードブロック内の `#` や setext 形式も正しく判定。
 
 ---
 
@@ -152,9 +152,7 @@ buf, err := runner.Run("", reviewJSON)
 
 ```text
 go-prompt-kit/
-├── prompts/           # 【INPUT】プロンプト構築
-│   ├── builder.go     #   - モード管理・partial展開・テンプレート実行
-│   └── load.go        #   - fs.FS からBuilderを構築するショートカット
+├── prompts/           # 【INPUT】モード管理・partial・テンプレート実行
 ├── md/                # 【OUTPUT】ドキュメント配信
 │   ├── ports/         #   - 抽象インターフェース定義
 │   ├── converter/     #   - Markdown 解析・タイトル抽出
@@ -162,8 +160,7 @@ go-prompt-kit/
 │   ├── renderer/      #   - HTML レンダリング (CSS/Template)
 │   ├── runner/        #   - 変換ワークフローの実行
 │   └── builder/       #   - 具象インスタンスの構築・依存の注入
-└── resource/          # 【BASE】共通基盤
-    └── loader.go      #   - fs.FS からのアセット自動スキャン
+└── resource/          # 【BASE】fs.FS からのアセット自動スキャン
 ```
 
 ---
