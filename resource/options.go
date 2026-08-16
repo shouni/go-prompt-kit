@@ -6,10 +6,29 @@ import "strings"
 type config struct {
 	recursive  bool
 	extensions []string
+	prefix     string
+}
+
+// newConfig は既定値を適用したうえでオプションを反映します。
+func newConfig(opts ...Option) *config {
+	cfg := &config{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	return cfg
 }
 
 // Option は Load の動作を変更する関数型です。
 type Option func(*config)
+
+// WithPrefix は、読み込む対象を指定した接頭辞を持つファイルだけに限定します。
+// 接頭辞はモード名から取り除かれます（"prompt_review.md" は接頭辞 "prompt_" で "review" になります）。
+// 指定しない場合はすべてのファイルが対象で、モード名は拡張子を除いたファイル名です。
+func WithPrefix(prefix string) Option {
+	return func(c *config) {
+		c.prefix = prefix
+	}
+}
 
 // WithRecursive は、サブディレクトリを再帰的に走査します。
 // このときモード名は rootDir からの相対パスから拡張子を除いたものになります
