@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewRenderer_Defaults(t *testing.T) {
+func TestNew_Defaults(t *testing.T) {
 	r, err := New()
 	require.NoError(t, err)
 	require.NotNil(t, r)
@@ -27,7 +27,7 @@ func TestNewRenderer_Defaults(t *testing.T) {
 	assert.Contains(t, got, "--color-primary-main")
 }
 
-func TestNewRenderer_WithCSS(t *testing.T) {
+func TestNew_WithCSS(t *testing.T) {
 	t.Run("任意のCSSへ差し替えられる", func(t *testing.T) {
 		r, err := New(WithCSS("body { color: rebeccapurple; }"))
 		require.NoError(t, err)
@@ -52,7 +52,7 @@ func TestNewRenderer_WithCSS(t *testing.T) {
 	})
 }
 
-func TestNewRenderer_WithTemplateText(t *testing.T) {
+func TestNew_WithTemplateText(t *testing.T) {
 	t.Run("任意のテンプレートへ差し替えられる", func(t *testing.T) {
 		r, err := New(
 			WithTemplateText(`<article lang="{{.Lang}}"><h1>{{.Title}}</h1>{{.Content}}</article>`),
@@ -76,7 +76,7 @@ func TestNewRenderer_WithTemplateText(t *testing.T) {
 	})
 }
 
-func TestNewRenderer_WithTemplate(t *testing.T) {
+func TestNew_WithTemplate(t *testing.T) {
 	t.Run("パース済みテンプレートを渡せる", func(t *testing.T) {
 		tpl := template.Must(template.New("custom").Parse(`{{.Title}}|{{.Content}}`))
 
@@ -140,7 +140,7 @@ func TestRenderer_Render_EscapesTitle(t *testing.T) {
 	assert.Contains(t, got, "<p>ok</p>")
 }
 
-func TestNewRenderer_WithExtraCSS(t *testing.T) {
+func TestNew_WithExtraCSS(t *testing.T) {
 	t.Run("既定CSSの後ろへ連結される", func(t *testing.T) {
 		r, err := New(WithExtraCSS(".finding { color: red; }"))
 		require.NoError(t, err)

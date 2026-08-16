@@ -4,10 +4,13 @@
 // プロンプト自身に持たせるために使います。本文へ紛れ込むとAIへの指示の先頭に
 // メタデータが混ざるため、テンプレートとして登録する前に切り離します。
 //
-//	files, _ := resource.Load(assets.Prompts, "prompts", "")
+//	files, _ := resource.Load(assets.Prompts, "prompts")
 //	bodies, fronts := frontmatter.SplitMap(files)
 //	infos, _ := frontmatter.DecodeMap[ModeInfo](fronts, yaml.Unmarshal)
 //	builder, _ := prompts.NewBuilder(bodies)
+//
+// テンプレートの読み込みと組み立てが目的なら、この一連の流れは
+// prompts.LoadFS に prompts.WithFrontMatter を渡すことでも行えます。
 //
 // メタデータの書式はこのパッケージでは解釈しません。解析関数は呼び出し側が
 // UnmarshalFunc として渡します（Decode / DecodeMap）。YAMLライブラリの選択と
