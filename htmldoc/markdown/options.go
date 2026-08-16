@@ -1,4 +1,4 @@
-package converter
+package markdown
 
 import (
 	"github.com/yuin/goldmark"
@@ -8,7 +8,7 @@ import (
 	"github.com/yuin/goldmark/renderer/html"
 )
 
-// config は GoldmarkConverter の構築設定を保持します。
+// config は Converter の構築設定を保持します。
 // goldmark.New へ渡すオプションを種別ごとに蓄積し、New の中で一度だけ適用します。
 type config struct {
 	rendererOptions []renderer.Option
@@ -17,7 +17,7 @@ type config struct {
 	goldmarkOptions []goldmark.Option
 }
 
-// Option は GoldmarkConverter の設定オプションを定義する関数型です。
+// Option は Converter の設定オプションを定義する関数型です。
 type Option func(*config)
 
 // WithUnsafeHTML は、Goldmarkレンダラーで「安全でない」HTML出力を許可するオプションです。

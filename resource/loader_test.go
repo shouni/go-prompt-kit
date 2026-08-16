@@ -17,7 +17,7 @@ func TestLoad(t *testing.T) {
 	}
 
 	t.Run("正常系: プロンプトが正しくロードされること", func(t *testing.T) {
-		templates, err := Load(mockFS, "prompts", "prompt_")
+		templates, err := Load(mockFS, "prompts", WithPrefix("prompt_"))
 
 		// Load自体の失敗は致命的なので require を使用
 		require.NoError(t, err, "Load に失敗しました")
@@ -29,7 +29,7 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("異常系: 存在しないディレクトリを指定した場合エラーになること", func(t *testing.T) {
-		_, err := Load(mockFS, "non_existent", "prompt_")
+		_, err := Load(mockFS, "non_existent", WithPrefix("prompt_"))
 
 		// エラーが発生することを検証
 		assert.Error(t, err, "存在しないディレクトリ指定時はエラーが返るべきです")

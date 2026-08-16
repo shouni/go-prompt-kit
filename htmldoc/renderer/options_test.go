@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewRenderer_Defaults(t *testing.T) {
-	r, err := NewRenderer()
+func TestNew_Defaults(t *testing.T) {
+	r, err := New()
 	require.NoError(t, err)
 	require.NotNil(t, r)
 
@@ -27,9 +27,9 @@ func TestNewRenderer_Defaults(t *testing.T) {
 	assert.Contains(t, got, "--color-primary-main")
 }
 
-func TestNewRenderer_WithCSS(t *testing.T) {
+func TestNew_WithCSS(t *testing.T) {
 	t.Run("任意のCSSへ差し替えられる", func(t *testing.T) {
-		r, err := NewRenderer(WithCSS("body { color: rebeccapurple; }"))
+		r, err := New(WithCSS("body { color: rebeccapurple; }"))
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
@@ -42,7 +42,7 @@ func TestNewRenderer_WithCSS(t *testing.T) {
 	})
 
 	t.Run("空文字を渡すとスタイルなしになる", func(t *testing.T) {
-		r, err := NewRenderer(WithCSS(""))
+		r, err := New(WithCSS(""))
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
@@ -52,9 +52,9 @@ func TestNewRenderer_WithCSS(t *testing.T) {
 	})
 }
 
-func TestNewRenderer_WithTemplateText(t *testing.T) {
+func TestNew_WithTemplateText(t *testing.T) {
 	t.Run("任意のテンプレートへ差し替えられる", func(t *testing.T) {
-		r, err := NewRenderer(
+		r, err := New(
 			WithTemplateText(`<article lang="{{.Lang}}"><h1>{{.Title}}</h1>{{.Content}}</article>`),
 			WithCSS("ignored"),
 		)
@@ -70,17 +70,17 @@ func TestNewRenderer_WithTemplateText(t *testing.T) {
 	})
 
 	t.Run("パースに失敗した場合はエラーを返す", func(t *testing.T) {
-		_, err := NewRenderer(WithTemplateText(`{{.Unclosed`))
+		_, err := New(WithTemplateText(`{{.Unclosed`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "HTMLテンプレートのパースエラー")
 	})
 }
 
-func TestNewRenderer_WithTemplate(t *testing.T) {
+func TestNew_WithTemplate(t *testing.T) {
 	t.Run("パース済みテンプレートを渡せる", func(t *testing.T) {
 		tpl := template.Must(template.New("custom").Parse(`{{.Title}}|{{.Content}}`))
 
-		r, err := NewRenderer(WithTemplate(tpl))
+		r, err := New(WithTemplate(tpl))
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
@@ -89,7 +89,7 @@ func TestNewRenderer_WithTemplate(t *testing.T) {
 	})
 
 	t.Run("nilを渡した場合はエラーを返す", func(t *testing.T) {
-		_, err := NewRenderer(WithTemplate(nil))
+		_, err := New(WithTemplate(nil))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "テンプレートがnilです")
 	})
@@ -98,7 +98,7 @@ func TestNewRenderer_WithTemplate(t *testing.T) {
 func TestRenderer_Render_Error(t *testing.T) {
 	t.Run("テンプレート実行に失敗した場合はエラーを返す", func(t *testing.T) {
 		// TemplateData に存在しないフィールドを参照させる
-		r, err := NewRenderer(WithTemplateText(`{{.DoesNotExist}}`))
+		r, err := New(WithTemplateText(`{{.DoesNotExist}}`))
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
@@ -108,7 +108,7 @@ func TestRenderer_Render_Error(t *testing.T) {
 	})
 
 	t.Run("書き込み先がエラーを返す場合", func(t *testing.T) {
-		r, err := NewRenderer()
+		r, err := New()
 		require.NoError(t, err)
 
 		err = r.Render(failingWriter{}, []byte("x"), "ja", "T")
@@ -125,7 +125,7 @@ func (failingWriter) Write([]byte) (int, error) {
 }
 
 func TestRenderer_Render_EscapesTitle(t *testing.T) {
-	r, err := NewRenderer(WithCSS(""))
+	r, err := New(WithCSS(""))
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
@@ -140,9 +140,9 @@ func TestRenderer_Render_EscapesTitle(t *testing.T) {
 	assert.Contains(t, got, "<p>ok</p>")
 }
 
-func TestNewRenderer_WithExtraCSS(t *testing.T) {
+func TestNew_WithExtraCSS(t *testing.T) {
 	t.Run("既定CSSの後ろへ連結される", func(t *testing.T) {
-		r, err := NewRenderer(WithExtraCSS(".finding { color: red; }"))
+		r, err := New(WithExtraCSS(".finding { color: red; }"))
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
@@ -158,7 +158,7 @@ func TestNewRenderer_WithExtraCSS(t *testing.T) {
 	})
 
 	t.Run("style ブロックは1つだけになる", func(t *testing.T) {
-		r, err := NewRenderer(WithExtraCSS("body { color: red; }"))
+		r, err := New(WithExtraCSS("body { color: red; }"))
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
@@ -168,7 +168,7 @@ func TestNewRenderer_WithExtraCSS(t *testing.T) {
 	})
 
 	t.Run("WithCSSと併用すると指定した土台の後ろへ足される", func(t *testing.T) {
-		r, err := NewRenderer(
+		r, err := New(
 			WithCSS("body { margin: 0; }"),
 			WithExtraCSS(".x { color: blue; }"),
 		)
@@ -185,7 +185,7 @@ func TestNewRenderer_WithExtraCSS(t *testing.T) {
 	})
 
 	t.Run("複数回指定すると指定順に連結される", func(t *testing.T) {
-		r, err := NewRenderer(
+		r, err := New(
 			WithCSS("/*base*/"),
 			WithExtraCSS(".a {}"),
 			WithExtraCSS(".b {}"),
@@ -201,7 +201,7 @@ func TestNewRenderer_WithExtraCSS(t *testing.T) {
 	})
 
 	t.Run("空文字は無視される", func(t *testing.T) {
-		r, err := NewRenderer(WithCSS("body{}"), WithExtraCSS(""))
+		r, err := New(WithCSS("body{}"), WithExtraCSS(""))
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
@@ -210,7 +210,7 @@ func TestNewRenderer_WithExtraCSS(t *testing.T) {
 	})
 
 	t.Run("土台が空なら追加分だけになる", func(t *testing.T) {
-		r, err := NewRenderer(WithCSS(""), WithExtraCSS(".only {}"))
+		r, err := New(WithCSS(""), WithExtraCSS(".only {}"))
 		require.NoError(t, err)
 
 		var buf bytes.Buffer

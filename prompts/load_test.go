@@ -17,7 +17,7 @@ func TestLoadFS(t *testing.T) {
 	}
 
 	t.Run("読み込みとBuilder構築をまとめて行える", func(t *testing.T) {
-		b, err := LoadFS(mockFS, "prompts", "prompt_")
+		b, err := LoadFS(mockFS, "prompts", WithPrefix("prompt_"))
 		require.NoError(t, err)
 
 		assert.Equal(t, []string{"release", "review"}, b.Modes())
@@ -28,13 +28,13 @@ func TestLoadFS(t *testing.T) {
 	})
 
 	t.Run("存在しないディレクトリはエラーを伝播する", func(t *testing.T) {
-		_, err := LoadFS(mockFS, "missing", "prompt_")
+		_, err := LoadFS(mockFS, "missing", WithPrefix("prompt_"))
 		require.Error(t, err)
 		assert.ErrorIs(t, err, fs.ErrNotExist)
 	})
 
 	t.Run("該当ファイルが無い場合はErrEmptyTemplates", func(t *testing.T) {
-		_, err := LoadFS(mockFS, "prompts", "存在しない接頭辞_")
+		_, err := LoadFS(mockFS, "prompts", WithPrefix("存在しない接頭辞_"))
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrEmptyTemplates)
 	})
@@ -48,7 +48,7 @@ func TestLoadFS_Recursive(t *testing.T) {
 		"prompts/en/rock.md":    {Data: []byte("Rock\n{{template \"en/_output\" .}}")},
 	}
 
-	b, err := LoadFS(mockFS, "prompts", "", WithRecursive())
+	b, err := LoadFS(mockFS, "prompts", WithRecursive())
 	require.NoError(t, err)
 
 	t.Run("言語ディレクトリがモード名の接頭辞になる", func(t *testing.T) {
@@ -73,7 +73,7 @@ func TestLoadFS_WithExtensions(t *testing.T) {
 		"prompts/c.txt":  {Data: []byte("text")},
 	}
 
-	b, err := LoadFS(mockFS, "prompts", "", WithExtensions(".md", "tmpl"))
+	b, err := LoadFS(mockFS, "prompts", WithExtensions(".md", "tmpl"))
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"a", "b"}, b.Modes())

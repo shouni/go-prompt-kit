@@ -142,7 +142,7 @@ func TestLoadFS_WithFuncs(t *testing.T) {
 		"prompts/main.md":  {Data: []byte(`{{template "_head" .}} 本文`)},
 	}
 
-	b, err := LoadFS(mockFS, "prompts", "",
+	b, err := LoadFS(mockFS, "prompts",
 		WithFuncs(template.FuncMap{"upper": strings.ToUpper}),
 	)
 	require.NoError(t, err)
@@ -159,7 +159,7 @@ func TestLoadFS_CombinedOptions(t *testing.T) {
 		"prompts/ja/note.txt": {Data: []byte(`除外される`)},
 	}
 
-	b, err := LoadFS(mockFS, "prompts", "",
+	b, err := LoadFS(mockFS, "prompts",
 		WithRecursive(),
 		WithExtensions(".md"),
 		WithFuncs(template.FuncMap{"join": strings.Join}),
@@ -323,7 +323,7 @@ func TestLoadFS_ComicStylePattern(t *testing.T) {
 		"prompts/outline/notes.txt":  {Data: []byte("除外される")},
 	}
 
-	b, err := LoadFS(mockFS, "prompts/outline", "",
+	b, err := LoadFS(mockFS, "prompts/outline",
 		WithExtensions(".md"),
 		WithDefaultMode("default"),
 	)

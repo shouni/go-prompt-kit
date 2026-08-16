@@ -1,11 +1,11 @@
-package converter
+package markdown
 
 import (
 	"testing"
 )
 
-func TestGoldmarkConverter_Convert(t *testing.T) {
-	c := NewGoldmarkConverter()
+func TestConverter_Convert(t *testing.T) {
+	c := New()
 
 	tests := []struct {
 		name    string
@@ -44,8 +44,8 @@ func TestGoldmarkConverter_Convert(t *testing.T) {
 	}
 }
 
-func TestGoldmarkConverter_ExtractTitleFromMarkdown(t *testing.T) {
-	c := NewGoldmarkConverter()
+func TestConverter_ExtractTitle(t *testing.T) {
+	c := New()
 
 	tests := []struct {
 		name  string
@@ -91,8 +91,8 @@ func TestGoldmarkConverter_ExtractTitleFromMarkdown(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := c.ExtractTitleFromMarkdown([]byte(tt.input)); got != tt.want {
-				t.Errorf("ExtractTitleFromMarkdown() = %v, want %v", got, tt.want)
+			if got := c.ExtractTitle([]byte(tt.input)); got != tt.want {
+				t.Errorf("ExtractTitle() = %v, want %v", got, tt.want)
 			}
 		})
 	}

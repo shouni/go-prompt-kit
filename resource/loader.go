@@ -13,13 +13,15 @@ import (
 // ErrNotDirectory は、rootDir にディレクトリ以外が指定された場合に返されます。
 var ErrNotDirectory = errors.New("ディレクトリではありません")
 
-// Load は指定されたファイルシステム内のディレクトリから、指定された接頭辞を持つファイルを読み込み、マップとして返します。
-// 既定ではサブディレクトリを走査しません。WithRecursive を指定すると再帰的に読み込みます。
-func Load(fileSystem fs.FS, rootDir, prefix string, opts ...Option) (map[string]string, error) {
-	cfg := &config{}
-	for _, opt := range opts {
-		opt(cfg)
-	}
+// Load は指定されたファイルシステム内のディレクトリからファイルを読み込み、
+// モード名（既定では拡張子を除いたファイル名）をキーとするマップとして返します。
+// 既定ではサブディレクトリを走査しません。対象の絞り込みと走査方法は
+// WithPrefix / WithExtensions / WithRecursive で変更します。
+//
+//	templates, err := resource.Load(files, "prompts")
+//	templates, err := resource.Load(files, "prompts", resource.WithExtensions(".md"))
+func Load(fileSystem fs.FS, rootDir string, opts ...Option) (map[string]string, error) {
+	cfg := newConfig(opts...)
 
 	// fs.WalkDir はファイルを起点にしても走査できてしまうため、
 	// ディレクトリであることを先に確認して従来どおりエラーにします。
@@ -47,14 +49,14 @@ func Load(fileSystem fs.FS, rootDir, prefix string, opts ...Option) (map[string]
 		}
 
 		fileName := entry.Name()
-		if !strings.HasPrefix(fileName, prefix) {
+		if !strings.HasPrefix(fileName, cfg.prefix) {
 			return nil
 		}
 		if !cfg.matchExtension(path.Ext(fileName)) {
 			return nil
 		}
 
-		modeName := modeNameOf(rootDir, filePath, prefix)
+		modeName := modeNameOf(rootDir, filePath, cfg.prefix)
 
 		content, err := fs.ReadFile(fileSystem, filePath)
 		if err != nil {

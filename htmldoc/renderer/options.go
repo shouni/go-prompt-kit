@@ -30,7 +30,7 @@ func WithTemplate(tpl *template.Template) Option {
 }
 
 // WithTemplateText は、テンプレート文字列をパースして使用します。
-// パースに失敗した場合は NewRenderer がエラーを返します。
+// パースに失敗した場合は New がエラーを返します。
 func WithTemplateText(text string) Option {
 	return func(c *config) {
 		tpl, err := template.New("template.html").Parse(text)

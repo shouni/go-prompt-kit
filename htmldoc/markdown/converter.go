@@ -1,5 +1,5 @@
-// Package converter は、MarkdownをHTMLフラグメントへ変換するコンバーターを提供します。
-package converter
+// Package markdown は、MarkdownをHTMLフラグメントへ変換する ports.Converter 実装を提供します。
+package markdown
 
 import (
 	"bytes"
@@ -13,13 +13,13 @@ import (
 	"github.com/yuin/goldmark/text"
 )
 
-// GoldmarkConverter は goldmark ライブラリを使用した実体です。
-type GoldmarkConverter struct {
+// Converter は goldmark を用いた Markdown 用の ports.Converter 実装です。
+type Converter struct {
 	md goldmark.Markdown
 }
 
-// NewGoldmarkConverter は新しいインスタンスを作成します。
-func NewGoldmarkConverter(opts ...Option) *GoldmarkConverter {
+// New は Markdown 用の Converter を作成します。
+func New(opts ...Option) *Converter {
 	cfg := &config{}
 	for _, opt := range opts {
 		opt(cfg)
@@ -35,13 +35,13 @@ func NewGoldmarkConverter(opts ...Option) *GoldmarkConverter {
 	}
 	goldmarkOptions = append(goldmarkOptions, cfg.goldmarkOptions...)
 
-	return &GoldmarkConverter{
+	return &Converter{
 		md: goldmark.New(goldmarkOptions...),
 	}
 }
 
 // Convert は Markdown を HTML に変換します。
-func (c *GoldmarkConverter) Convert(input []byte) ([]byte, error) {
+func (c *Converter) Convert(input []byte) ([]byte, error) {
 	var buf bytes.Buffer
 
 	if err := c.md.Convert(input, &buf); err != nil {
@@ -51,11 +51,11 @@ func (c *GoldmarkConverter) Convert(input []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// ExtractTitleFromMarkdown は、最初の見出しのテキストをタイトルとして抽出します。
+// ExtractTitle は、最初の見出しのテキストをタイトルとして抽出します。
 // goldmark のパーサーで構文木を構築してから探索するため、コードブロック内の
 // "#" で始まる行や、閉じの "#" 列、setext形式の見出しも正しく扱えます。
 // 見出しが存在しない場合は空文字を返します。
-func (c *GoldmarkConverter) ExtractTitleFromMarkdown(input []byte) string {
+func (c *Converter) ExtractTitle(input []byte) string {
 	if len(input) == 0 {
 		return ""
 	}

@@ -15,7 +15,7 @@ func TestLoad_NonRecursiveByDefault(t *testing.T) {
 		"prompts/ja/nested.md": {Data: []byte("ネスト")},
 	}
 
-	templates, err := Load(mockFS, "prompts", "")
+	templates, err := Load(mockFS, "prompts")
 	require.NoError(t, err)
 
 	assert.Len(t, templates, 1, "既定ではサブディレクトリを走査しません")
@@ -31,7 +31,7 @@ func TestLoad_WithRecursive(t *testing.T) {
 		"other/should_not_appear.md": {Data: []byte("対象外")},
 	}
 
-	templates, err := Load(mockFS, "prompts", "", WithRecursive())
+	templates, err := Load(mockFS, "prompts", WithRecursive())
 	require.NoError(t, err)
 
 	assert.Equal(t, map[string]string{
@@ -49,7 +49,7 @@ func TestLoad_WithRecursive_KeepsPrefixFiltering(t *testing.T) {
 		"prompts/ja/other.md":    {Data: []byte("除外")},
 	}
 
-	templates, err := Load(mockFS, "prompts", "prompt_", WithRecursive())
+	templates, err := Load(mockFS, "prompts", WithPrefix("prompt_"), WithRecursive())
 	require.NoError(t, err)
 
 	// 接頭辞はファイル名部分にのみ適用され、ディレクトリ部分は保持される
@@ -68,28 +68,28 @@ func TestLoad_WithExtensions(t *testing.T) {
 	}
 
 	t.Run("ドット付き・ドットなしのどちらでも指定できる", func(t *testing.T) {
-		templates, err := Load(mockFS, "prompts", "", WithExtensions(".md", "tmpl"))
+		templates, err := Load(mockFS, "prompts", WithExtensions(".md", "tmpl"))
 		require.NoError(t, err)
 
 		assert.Equal(t, map[string]string{"a": "markdown", "b": "template"}, templates)
 	})
 
 	t.Run("大文字小文字を区別しない", func(t *testing.T) {
-		templates, err := Load(mockFS, "prompts", "", WithExtensions(".MD"))
+		templates, err := Load(mockFS, "prompts", WithExtensions(".MD"))
 		require.NoError(t, err)
 
 		assert.Equal(t, map[string]string{"a": "markdown"}, templates)
 	})
 
 	t.Run("空文字の指定は無視される", func(t *testing.T) {
-		templates, err := Load(mockFS, "prompts", "", WithExtensions("", ".txt"))
+		templates, err := Load(mockFS, "prompts", WithExtensions("", ".txt"))
 		require.NoError(t, err)
 
 		assert.Equal(t, map[string]string{"c": "text"}, templates)
 	})
 
 	t.Run("未指定ならすべての拡張子が対象", func(t *testing.T) {
-		templates, err := Load(mockFS, "prompts", "")
+		templates, err := Load(mockFS, "prompts")
 		require.NoError(t, err)
 
 		assert.Len(t, templates, 4)
@@ -104,7 +104,7 @@ func TestLoad_NotExistIsWrapped(t *testing.T) {
 		"prompts/a.md": {Data: []byte("A")},
 	}
 
-	_, err := Load(mockFS, "prompts/en", "")
+	_, err := Load(mockFS, "prompts/en")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, fs.ErrNotExist)
 	assert.Contains(t, err.Error(), "の読み込みに失敗")
@@ -117,7 +117,7 @@ func TestLoad_NameCollision(t *testing.T) {
 			"prompts/review.tmpl": {Data: []byte("tmpl版")},
 		}
 
-		_, err := Load(mockFS, "prompts", "")
+		_, err := Load(mockFS, "prompts")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "テンプレート名が衝突しています")
 	})
@@ -128,7 +128,7 @@ func TestLoad_NameCollision(t *testing.T) {
 			"prompts/review.tmpl": {Data: []byte("tmpl版")},
 		}
 
-		templates, err := Load(mockFS, "prompts", "", WithExtensions(".md"))
+		templates, err := Load(mockFS, "prompts", WithExtensions(".md"))
 		require.NoError(t, err)
 		assert.Equal(t, "md版", templates["review"])
 	})
@@ -139,7 +139,7 @@ func TestLoad_NameCollision(t *testing.T) {
 			"prompts/en/review.md": {Data: []byte("English")},
 		}
 
-		templates, err := Load(mockFS, "prompts", "", WithRecursive())
+		templates, err := Load(mockFS, "prompts", WithRecursive())
 		require.NoError(t, err)
 		assert.Equal(t, map[string]string{
 			"ja/review": "日本語",
@@ -155,13 +155,13 @@ func TestLoad_RootDirDot(t *testing.T) {
 	}
 
 	t.Run("カレント指定でも正しく動く", func(t *testing.T) {
-		templates, err := Load(mockFS, ".", "")
+		templates, err := Load(mockFS, ".")
 		require.NoError(t, err)
 		assert.Equal(t, map[string]string{"a": "A"}, templates)
 	})
 
 	t.Run("カレント指定での再帰", func(t *testing.T) {
-		templates, err := Load(mockFS, ".", "", WithRecursive())
+		templates, err := Load(mockFS, ".", WithRecursive())
 		require.NoError(t, err)
 		assert.Equal(t, map[string]string{"a": "A", "sub/b": "B"}, templates)
 	})
@@ -173,7 +173,7 @@ func TestLoad_EmptyResult(t *testing.T) {
 	}
 
 	// 該当ファイルが無くてもエラーにはならず、空のマップが返る
-	templates, err := Load(mockFS, "prompts", "存在しない_")
+	templates, err := Load(mockFS, "prompts", WithPrefix("存在しない_"))
 	require.NoError(t, err)
 	assert.Empty(t, templates)
 }
@@ -183,7 +183,7 @@ func TestLoad_RootDirMustBeDirectory(t *testing.T) {
 		"prompts/a.md": {Data: []byte("A")},
 	}
 
-	_, err := Load(mockFS, "prompts/a.md", "")
+	_, err := Load(mockFS, "prompts/a.md")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrNotDirectory)
 }

@@ -3,6 +3,7 @@ package prompts
 import (
 	"io/fs"
 
+	"github.com/shouni/go-prompt-kit/frontmatter"
 	"github.com/shouni/go-prompt-kit/resource"
 )
 
@@ -10,17 +11,35 @@ import (
 // embed.FS からの読み込みと Builder の構築をまとめた入口で、
 // resource.Load と NewBuilder を個別に呼ぶ場合と等価です。
 //
-//	//go:embed prompts/prompt_*.md
+//	//go:embed prompts/*.md
 //	var files embed.FS
 //
-//	builder, err := prompts.LoadFS(files, "prompts", "prompt_")
-func LoadFS(fileSystem fs.FS, rootDir, prefix string, opts ...Option) (*Builder, error) {
+//	builder, err := prompts.LoadFS(files, "prompts")
+//
+// プロンプトが先頭に front matter を持つ場合は WithFrontMatter を指定します。
+// 本文だけがテンプレートとして登録され、front matter は Builder.FrontMatter から取得できます。
+//
+//	builder, err := prompts.LoadFS(files, "prompts", prompts.WithFrontMatter())
+//	meta, err := frontmatter.DecodeMap[ModeInfo](builder.FrontMatters(), yaml.Unmarshal)
+func LoadFS(fileSystem fs.FS, rootDir string, opts ...Option) (*Builder, error) {
 	cfg := newConfig(opts...)
 
-	templates, err := resource.Load(fileSystem, rootDir, prefix, cfg.resourceOptions...)
+	templates, err := resource.Load(fileSystem, rootDir, cfg.resourceOptions...)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewBuilder(templates, opts...)
+	var fronts map[string]string
+	if cfg.splitFrontMatter {
+		templates, fronts = frontmatter.SplitMap(templates)
+	}
+
+	// 読み込み専用オプションはここで消費済みのため、NewBuilder の検査は通しません。
+	builder, err := newBuilder(templates, cfg)
+	if err != nil {
+		return nil, err
+	}
+	builder.fronts = fronts
+
+	return builder, nil
 }

@@ -1,4 +1,4 @@
-package converter
+package markdown
 
 import (
 	"strings"
@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestGoldmarkConverter_ExtractTitle_BlockContext は、行単位の正規表現では
+// TestConverter_ExtractTitle_BlockContext は、行単位の正規表現では
 // 誤判定していたケースを検証します。いずれも構文木を辿ることで正しく解決されます。
-func TestGoldmarkConverter_ExtractTitle_BlockContext(t *testing.T) {
-	c := NewGoldmarkConverter()
+func TestConverter_ExtractTitle_BlockContext(t *testing.T) {
+	c := New()
 
 	tests := []struct {
 		name  string
@@ -87,63 +87,63 @@ func TestGoldmarkConverter_ExtractTitle_BlockContext(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, c.ExtractTitleFromMarkdown([]byte(tt.input)))
+			assert.Equal(t, tt.want, c.ExtractTitle([]byte(tt.input)))
 		})
 	}
 }
 
-func TestGoldmarkConverter_Options(t *testing.T) {
+func TestConverter_Options(t *testing.T) {
 	t.Run("WithUnsafeHTML: 無効なら生HTMLは出力されない", func(t *testing.T) {
-		c := NewGoldmarkConverter(WithUnsafeHTML(false))
+		c := New(WithUnsafeHTML(false))
 		got, err := c.Convert([]byte("<div>raw</div>\n"))
 		require.NoError(t, err)
 		assert.NotContains(t, string(got), "<div>raw</div>")
 	})
 
 	t.Run("WithUnsafeHTML: 有効なら生HTMLがそのまま出力される", func(t *testing.T) {
-		c := NewGoldmarkConverter(WithUnsafeHTML(true))
+		c := New(WithUnsafeHTML(true))
 		got, err := c.Convert([]byte("<div>raw</div>\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), "<div>raw</div>")
 	})
 
 	t.Run("WithHardWraps: 単純な改行が<br>になる", func(t *testing.T) {
-		c := NewGoldmarkConverter(WithHardWraps(true))
+		c := New(WithHardWraps(true))
 		got, err := c.Convert([]byte("一行目\n二行目\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), "<br>")
 	})
 
 	t.Run("WithAutoHeadingID: 見出しにid属性が付く", func(t *testing.T) {
-		c := NewGoldmarkConverter(WithAutoHeadingID(true))
+		c := New(WithAutoHeadingID(true))
 		got, err := c.Convert([]byte("# Section Title\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), `id="section-title"`)
 	})
 
 	t.Run("WithAutoHeadingID: 無効ならid属性は付かない", func(t *testing.T) {
-		c := NewGoldmarkConverter(WithAutoHeadingID(false))
+		c := New(WithAutoHeadingID(false))
 		got, err := c.Convert([]byte("# Section Title\n"))
 		require.NoError(t, err)
 		assert.NotContains(t, string(got), `id=`)
 	})
 
 	t.Run("WithFootnotes: 脚注が展開される", func(t *testing.T) {
-		c := NewGoldmarkConverter(WithFootnotes(true))
+		c := New(WithFootnotes(true))
 		got, err := c.Convert([]byte("本文[^1]\n\n[^1]: 注釈\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), "footnote")
 	})
 
 	t.Run("WithTypographer: 引用符が活字記号へ置換される", func(t *testing.T) {
-		c := NewGoldmarkConverter(WithTypographer(true))
+		c := New(WithTypographer(true))
 		got, err := c.Convert([]byte("a -- b\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), "&ndash;")
 	})
 
 	t.Run("複数オプションの併用", func(t *testing.T) {
-		c := NewGoldmarkConverter(
+		c := New(
 			WithUnsafeHTML(true),
 			WithHardWraps(true),
 			WithAutoHeadingID(true),
@@ -158,17 +158,17 @@ func TestGoldmarkConverter_Options(t *testing.T) {
 	})
 
 	t.Run("GFMは常に有効", func(t *testing.T) {
-		c := NewGoldmarkConverter(WithHardWraps(true))
+		c := New(WithHardWraps(true))
 		got, err := c.Convert([]byte("~~打ち消し~~\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), "<del>")
 	})
 }
 
-// TestGoldmarkConverter_Concurrent は、1つのConverterを複数goroutineから
+// TestConverter_Concurrent は、1つのConverterを複数goroutineから
 // 同時に使用しても安全であることを確認します（go test -race で検証されます）。
-func TestGoldmarkConverter_Concurrent(t *testing.T) {
-	c := NewGoldmarkConverter()
+func TestConverter_Concurrent(t *testing.T) {
+	c := New()
 	input := []byte("# 並行タイトル\n\n本文です。\n")
 
 	const goroutines = 8
@@ -178,7 +178,7 @@ func TestGoldmarkConverter_Concurrent(t *testing.T) {
 		go func() {
 			defer func() { done <- struct{}{} }()
 			for range 20 {
-				if title := c.ExtractTitleFromMarkdown(input); title != "並行タイトル" {
+				if title := c.ExtractTitle(input); title != "並行タイトル" {
 					t.Errorf("タイトルが一致しません: %q", title)
 					return
 				}

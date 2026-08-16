@@ -26,14 +26,22 @@
 * **🔧 Custom Functions**: 独自のテンプレート関数を登録し、本文と partial の双方から利用。
 * **🎯 Default Mode**: モード未指定・未知のモードのフォールバック先を指定。
 * **🔍 Expand**: データなしで partial 展開済みの本文を取得。カタログ表示や本文の検査に。
+* **📝 Front Matter**: `WithFrontMatter` を付けるだけで、切り離しから `Builder` への登録までを一度の読み込みで完了。
+* **🔒 Concurrency-Safe**: 構築後の `Builder` は不変。起動時に一度作って HTTP ハンドラから並行に使えます。
 * **🛡 Collision Detection**: 名前の衝突・空ファイル・定義の重複を初期化時に検知。
 
-### 📡 [md] ドキュメント配信エンジン
+### 📝 [frontmatter] プロンプト先頭のメタデータ
+
+* **✂️ Split**: `---` で挟んだメタデータを本文から切り離す処理そのもの。`prompts` を介さず単体でも使えます。
+* **🔌 Pluggable Decode**: YAML ライブラリを固定せず、`yaml.Unmarshal` などを `UnmarshalFunc` として受け取る設計。**このパッケージの依存は標準ライブラリのみ**。
+* **👀 Invisible Diff Normalization**: BOM と CRLF を判定前に揃えるため、「front matter を書いたのに認識されない」が起きません。
+
+### 📡 [htmldoc] ドキュメント配信エンジン
 
 * **📑 Markdown to HTML**: AI のレスポンスを、スタイル済みの完全な HTML ドキュメントへ変換。
 * **🧾 JSON to HTML**: 構造化出力を、呼び出し側が指定した `html/template` で任意の形にHTMLフラグメント化。スキーマやテンプレートはライブラリ側では関知しない汎用設計。
 * **🎨 Style-Injected Rendering**: 組み込みの CSS とテンプレートで即座に成果物を出力。差し替えも、既定を保った追記も可能。
-* **🧩 Modular Architecture**: Converter, Renderer, Runner が分離され、特定のロジックのみを差し替え可能。
+* **🧩 Modular Architecture**: Converter と Renderer が `ports` のインターフェース越しに分離され、片方だけ差し替え可能。
 * **🌲 AST-based Title Extraction**: 構文木からタイトルを抽出するため、コードブロック内の `#` や setext 形式も正しく判定。
 
 ---
@@ -47,7 +55,7 @@
 var promptFiles embed.FS
 
 // embed.FS の読み込みと Builder の構築をまとめて行います
-builder, err := prompts.LoadFS(promptFiles, "prompts", "prompt_")
+builder, err := prompts.LoadFS(promptFiles, "prompts", prompts.WithPrefix("prompt_"))
 if err != nil {
     return err
 }
@@ -62,7 +70,7 @@ prompt, err := builder.Build("review", struct{ Diff string }{Diff: diff})
 モード名は `prompts/en/rock.md` → `en/rock` のように相対パスになります。
 
 ```go
-builder, err := prompts.LoadFS(promptFiles, "prompts", "", prompts.WithRecursive())
+builder, err := prompts.LoadFS(promptFiles, "prompts", prompts.WithRecursive())
 ```
 
 `_` で始まるファイルは partial として登録され、`Build` の対象にはなりません。
@@ -76,7 +84,7 @@ prompts/review.md    → モード "review"
 テンプレート関数は `WithFuncs` で登録します。partial からも呼び出せます。
 
 ```go
-builder, err := prompts.LoadFS(promptFiles, "prompts", "",
+builder, err := prompts.LoadFS(promptFiles, "prompts",
     prompts.WithRecursive(),
     prompts.WithFuncs(template.FuncMap{"join": strings.Join}),
 )
@@ -90,7 +98,7 @@ builder, err := prompts.LoadFS(promptFiles, "prompts", "",
 呼び出し側でモードの有無を判定する必要がなくなります。
 
 ```go
-builder, err := prompts.LoadFS(promptFiles, "prompts/outline", "",
+builder, err := prompts.LoadFS(promptFiles, "prompts/outline",
     prompts.WithExtensions(".md"),
     prompts.WithDefaultMode("default"),
 )
@@ -100,6 +108,8 @@ prompt, err := builder.Build("", data) // 未指定なので "default" が使わ
 
 partial の接頭辞は `WithPartialPrefix` で変更でき、空文字を指定すると
 partial 判定自体を行わず、全エントリがモードとして公開されます。
+読み込んだマップを `Builder` に渡す前に自前で選り分ける場合は、判定を二重に書かず
+`prompts.IsPartial(name, prompts.DefaultPartialPrefix)` を使ってください。
 
 ### 送るプロンプトの中身を確認する
 
@@ -118,24 +128,59 @@ text, err := builder.Expand("review")
 `ErrCyclicTemplate` として検出されます。データの起点が変わる
 `{{template "x" .Foo}}` は展開できないため `ErrNotExpandable` を返します。
 
+### プロンプト先頭のメタデータ（front matter）を切り離す
+
+モードの説明をプロンプト自身に持たせると、モードを足す作業がファイルを1つ置くだけで
+済みます。ただしメタデータをそのままテンプレートへ渡すと、AI への指示の先頭に
+YAML が紛れ込みます。`LoadFS` に `WithFrontMatter` を指定すると、本文だけが
+テンプレートとして登録され、切り離した front matter は `Builder` から取り出せます。
+
+```go
+builder, err := prompts.LoadFS(promptFiles, "prompts",
+    prompts.WithExtensions(".md"),
+    prompts.WithFrontMatter(),
+)
+
+// メタデータの構造はアプリが決めます。解析関数も呼び出し側が渡します。
+infos, err := frontmatter.DecodeMap[ModeInfo](builder.FrontMatters(), yaml.Unmarshal)
+
+prompt, err := builder.Build("review", data) // 本文だけが実行されます
+```
+
+読み込みと解析を自分で組み立てる場合は `frontmatter` を直接使えます。
+
+```go
+files, err := resource.Load(assets.Prompts, "prompts", resource.WithExtensions(".md"))
+bodies, fronts := frontmatter.SplitMap(files)
+builder, err := prompts.NewBuilder(bodies)
+```
+
+**メタデータの書式はこのパッケージでは解釈しません。** `UnmarshalFunc` は
+`func(data []byte, v any) error` なので、`yaml.Unmarshal` も `json.Unmarshal` も
+そのまま渡せます。YAML ライブラリを固定しないのは、その選択と乗り換えを利用側の
+ペースで行えるようにするためです（固定すると、乗り換えのたびにこのモジュールの
+リリースと足並みを揃える必要が生じ、移行の途中では 1 つのバイナリに 2 つの実装が載ります）。
+
+切り離しの規則は次の3点です。
+
+* 区切りとみなすのは `---` **だけ**からなる行です。`----` のように文字数が違う行は区切りではありません。
+* 取り除くのは区切り行とその行末の改行だけなので、区切りの直後の空行は本文に残ります。
+* 戻り値は front matter の有無にかかわらず、改行を LF へ揃え先頭の BOM を取り除いたものです。どちらもエディタ上で見えないまま判定を外すため、判定の前に揃えます。
+
 ### Markdown を HTML ドキュメントへ変換する
 
 ```go
-b, err := builder.New(
-    builder.WithEnableHardWraps(true),
-    builder.WithLang("ja-jp"),
+doc, err := htmldoc.New(
+    htmldoc.WithConverterOptions(markdown.WithHardWraps(true)),
+    htmldoc.WithLang("ja-jp"),
 )
 if err != nil {
     return err
 }
 
-runner, err := b.BuildRunner()
-if err != nil {
-    return err
-}
-
 // タイトルに空文字を渡すと、最初の見出しから自動抽出されます
-buf, err := runner.Run("", markdown)
+// 出力は io.Writer へ直接書き出されます（http.ResponseWriter やファイルにも渡せます）
+err = doc.Run(w, "", src)
 ```
 
 ### JSON を任意のテンプレートで HTML 化する
@@ -148,20 +193,15 @@ CSS は `WithRendererOptions` から指定します。`renderer.WithCSS` は既�
 ```go
 tpl := template.Must(template.New("fragment").Parse(fragmentHTML))
 
-b, err := builder.New(
-    builder.WithConverter(jsonconverter.New(tpl)),
-    builder.WithRendererOptions(renderer.WithCSS(myCSS)),
+doc, err := htmldoc.New(
+    htmldoc.WithConverter(jsondoc.New(tpl)),
+    htmldoc.WithRendererOptions(renderer.WithCSS(myCSS)),
 )
 if err != nil {
     return err
 }
 
-runner, err := b.BuildRunner()
-if err != nil {
-    return err
-}
-
-buf, err := runner.Run("", reviewJSON)
+err = doc.Run(w, "", reviewJSON)
 ```
 
 ---
@@ -173,13 +213,12 @@ buf, err := runner.Run("", reviewJSON)
 ```text
 go-prompt-kit/
 ├── prompts/           # 【INPUT】モード管理・partial・テンプレート実行
-├── md/                # 【OUTPUT】ドキュメント配信
-│   ├── ports/         #   - 抽象インターフェース定義
-│   ├── converter/     #   - Markdown 解析・タイトル抽出
-│   ├── jsonconverter/ #   - JSON→HTMLフラグメント変換（テンプレートは呼び出し側が注入）
-│   ├── renderer/      #   - HTML レンダリング (CSS/Template)
-│   ├── runner/        #   - 変換ワークフローの実行
-│   └── builder/       #   - 具象インスタンスの構築・依存の注入
+├── frontmatter/       # 【INPUT】プロンプト先頭のメタデータの切り離し（依存なし）
+├── htmldoc/           # 【OUTPUT】ドキュメント配信（Document = 変換 + レンダリングの実行）
+│   ├── ports/         #   - 抽象インターフェース定義 (Converter/Renderer/Runner)
+│   ├── markdown/      #   - Markdown→HTMLフラグメント変換・タイトル抽出
+│   ├── jsondoc/       #   - JSON→HTMLフラグメント変換（テンプレートは呼び出し側が注入）
+│   └── renderer/      #   - HTML レンダリング (CSS/Template)
 └── resource/          # 【BASE】fs.FS からのアセット自動スキャン
 ```
 
@@ -187,18 +226,22 @@ go-prompt-kit/
 
 ## ⚠️ 補足 (Notes)
 
-* `runner.MarkdownToHTMLRunner` は `runner.DocumentRunner` の別名です。入力形式は注入する Converter が決めるため、新しいコードでは `DocumentRunner` / `NewDocumentRunner` を使用してください。
-* `ports.Converter.ExtractTitleFromMarkdown` は名前に反して形式非依存です。`JSONConverter` はこれを「トップレベルの `title` キーの取得」として実装しています。互換性のため v1 では改名していません。
-* `converter.WithUnsafeHTML(true)` は Markdown 中の生 HTML をそのまま出力します。信頼できない入力に対しては有効化しないでください。同様に `renderer.WithCSS` の内容もエスケープされずに `<style>` へ挿入されます。
+* 読み込み専用のオプション（`WithPrefix` / `WithRecursive` / `WithExtensions` / `WithFrontMatter`）を `NewBuilder` に渡すと `ErrLoadOnlyOption` になります。黙って無視すると、絞り込んだつもりのまま全ファイルが登録されるためです。
+* `htmldoc.Document` は入力形式に関知しません。Markdown か JSON かは注入する `ports.Converter` が決めます。
+* `ports.Converter.ExtractTitle` は形式非依存です。`jsondoc.Converter` はこれを「トップレベルの `title` キーの取得」として実装しています（キーは `jsondoc.WithTitleKey` で変更可能）。
+* `markdown.WithUnsafeHTML(true)` は Markdown 中の生 HTML をそのまま出力します。信頼できない入力に対しては有効化しないでください。同様に `renderer.WithCSS` の内容もエスケープされずに `<style>` へ挿入されます。
 
 ---
 
-## 🤝 主な依存関係 (Dependencies)
+## 🤝 依存関係 (Dependencies)
 
-* [`github.com/yuin/goldmark`](https://github.com/yuin/goldmark): Markdown 解析・HTML変換エンジン
-* `text/template`: Go 標準のテンプレートエンジン
-* `io/fs`: 抽象化されたファイルシステムインターフェース
-* `embed`: 静的アセットのバイナリ埋め込み
+外部モジュールへの直接依存は **1 つだけ**です。
+
+* [`github.com/yuin/goldmark`](https://github.com/yuin/goldmark): Markdown 解析・HTML 変換（`htmldoc/markdown` のみが使用）
+
+`prompts` / `resource` / `frontmatter` は標準ライブラリ（`text/template` / `io/fs` / `embed`）だけで動きます。
+とくに `frontmatter` が YAML ライブラリを持たないのは意図的な設計です（上記参照）。
+テストのみ [`stretchr/testify`](https://github.com/stretchr/testify) を使用します。
 
 ---
 

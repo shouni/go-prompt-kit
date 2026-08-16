@@ -29,31 +29,52 @@ var (
 	// {{define}} で定義している場合に返されます。
 	// 全テンプレートは1つの名前空間を共有するため、放置すると後勝ちで静かに上書きされます。
 	ErrDuplicateDefinition = errors.New("テンプレート定義が重複しています")
+
+	// ErrLoadOnlyOption は、読み込み時のみ有効なオプションが NewBuilder に
+	// 渡された場合に返されます。黙って無視すると、指定したつもりの絞り込みが
+	// 効いていないことに気付けないためです。
+	ErrLoadOnlyOption = errors.New("LoadFS でのみ有効なオプションです")
 )
 
-// Builder はプロンプトの構成を管理し、モード選択のロジックを内包します。
+// Builder は、読み込み済みのテンプレート一式とモード選択の規則を保持します。
 // すべてのテンプレートは1つの名前空間へ関連付けて登録されるため、
 // モード本文から partial を {{template "_name" .}} で参照できます。
+//
+// 構築後の Builder は不変で、すべての公開メソッドを複数の goroutine から
+// 同時に呼び出せます。HTTPハンドラのように並行して呼ばれる場所では、
+// 起動時に一度構築して使い回してください。
 type Builder struct {
 	root        *template.Template
 	modes       []string
 	modeSet     map[string]struct{}
 	defaultMode string
+	// fronts は WithFrontMatter で切り離した front matter です（エントリ名 -> 生の文字列）。
+	fronts map[string]string
 }
 
-// NewBuilder は Builder を初期化します。
-// キー（パス形式の場合は末尾の要素）が接頭辞 "_" で始まるエントリは partial として扱われ、
-// Build の対象にはならず、他のテンプレートからの参照専用になります
-// （接頭辞は WithPartialPrefix で変更できます）。
+// NewBuilder は、モード名をキーとするテンプレートのマップから Builder を構築します。
+// DefaultPartialPrefix で始まるエントリは partial として扱われます（IsPartial を参照）。
+//
+// 読み込みに関するオプションは LoadFS 専用です。渡された場合は ErrLoadOnlyOption を返します。
 func NewBuilder(templates map[string]string, opts ...Option) (*Builder, error) {
+	cfg := newConfig(opts...)
+
+	if len(cfg.loadOnly) > 0 {
+		return nil, fmt.Errorf("%w: %s", ErrLoadOnlyOption, strings.Join(cfg.loadOnly, ", "))
+	}
+
+	return newBuilder(templates, cfg)
+}
+
+// newBuilder は、適用済みの設定から Builder を構築します。
+// LoadFS は読み込み専用オプションを自身で消費するため、NewBuilder の検査を通さずここを呼びます。
+func newBuilder(templates map[string]string, cfg *config) (*Builder, error) {
 	if len(templates) == 0 {
 		return nil, ErrEmptyTemplates
 	}
 
-	cfg := newConfig(opts...)
-
-	// Option("missingkey=error") を追加して、変数の埋め込み漏れを許容しない。
-	// option は関連テンプレート間で共有されるため、root への設定が全体へ効きます。
+	// missingkey=error は root へ設定します。オプションは関連テンプレート間で
+	// 共有されるため、これだけで partial を含む全エントリへ効きます。
 	root := template.New("").Option("missingkey=error")
 	if len(cfg.funcs) > 0 {
 		root = root.Funcs(cfg.funcs)
@@ -61,8 +82,7 @@ func NewBuilder(templates map[string]string, opts ...Option) (*Builder, error) {
 
 	modes := make([]string, 0, len(templates))
 	modeSet := make(map[string]struct{}, len(templates))
-	// テンプレート名 -> それを定義したエントリ名。
-	// 全エントリが1つの名前空間を共有するため、重複定義を検出して静かな上書きを防ぎます。
+	// テンプレート名 -> それを定義したエントリ名（重複定義の検出用。parseEntry を参照）。
 	definedBy := make(map[string]string, len(templates))
 
 	// エラー報告の順序を安定させるため、名前順に処理します。
@@ -72,15 +92,15 @@ func NewBuilder(templates map[string]string, opts ...Option) (*Builder, error) {
 			return nil, fmt.Errorf("プロンプトテンプレート '%s' の読み込みに失敗しました: 内容が空です", name)
 		}
 
-		if err := recordDefinitions(name, content, cfg.funcs, definedBy); err != nil {
+		parsed, err := parseEntry(name, content, cfg.funcs, definedBy)
+		if err != nil {
 			return nil, err
 		}
-
-		if _, err := root.New(name).Parse(content); err != nil {
-			return nil, fmt.Errorf("プロンプト '%s' の解析に失敗: %w", name, err)
+		if err := attach(root, parsed); err != nil {
+			return nil, fmt.Errorf("プロンプト '%s' の登録に失敗: %w", name, err)
 		}
 
-		if !isPartial(name, cfg.partialPrefix) {
+		if !IsPartial(name, cfg.partialPrefix) {
 			modes = append(modes, name)
 			modeSet[name] = struct{}{}
 		}
@@ -105,9 +125,12 @@ func NewBuilder(templates map[string]string, opts ...Option) (*Builder, error) {
 	}, nil
 }
 
-// Build は、要求されたモードに応じて適切なテンプレートを実行します。
+// Build は、指定されたモードのテンプレートを data で実行します。
 // WithDefaultMode が指定されている場合、未登録のモード（空文字を含む）は既定モードへ委ねられます。
-// 注意: data の内容に関する事前バリデーションは行いません。呼び出し元で適切なデータが設定されていることを保証してください。
+//
+// テンプレートが参照するフィールドが data に無い場合はエラーになります
+// （"<no value>" として黙って出力されることはありません）。
+// data の中身そのものの妥当性は検証しないため、値の確認は呼び出し側の責務です。
 func (b *Builder) Build(mode string, data any) (string, error) {
 	resolved, err := b.resolveMode(mode)
 	if err != nil {
@@ -140,26 +163,42 @@ func (b *Builder) Modes() []string {
 }
 
 // Has は、指定されたモードが登録されているかを返します。
+// 既定モード（WithDefaultMode）へのフォールバックは考慮せず、実際の登録有無を返します。
 func (b *Builder) Has(mode string) bool {
 	_, ok := b.modeSet[mode]
 	return ok
 }
 
-// recordDefinitions は、エントリが定義するテンプレート名を記録し、
+// FrontMatter は、指定したエントリの front matter を切り離したままの文字列で返します。
+// LoadFS に WithFrontMatter を指定した場合のみ値を持ちます。
+// front matter を持たないエントリと未知のエントリはどちらも空文字を返します。
+//
+// 書式の解釈はこのパッケージでは行いません。frontmatter.Decode へ渡してください。
+func (b *Builder) FrontMatter(name string) string {
+	return b.fronts[name]
+}
+
+// FrontMatters は、切り離した front matter をエントリ名をキーとするマップで返します
+// （partial を含みます）。frontmatter.DecodeMap へそのまま渡せます。
+// 呼び出し側が書き換えても Builder には影響しません。
+func (b *Builder) FrontMatters() map[string]string {
+	return maps.Clone(b.fronts)
+}
+
+// parseEntry は、エントリ単体を解析し、そのエントリが定義するテンプレート名を記録します。
 // 別のエントリが既に同じ名前を定義していた場合はエラーを返します。
 // 全エントリが1つの名前空間を共有するため、検出しないと後勝ちで静かに上書きされます。
 //
-// 判定にはエントリ単体を解析した結果を使います。root を走査すると
-// 他のエントリが定義済みの名前と区別できないためです。
-// なお {{template "x"}} による参照は名前空間へエントリを作らないので、
-// ここで扱われるのは {{define "x"}} による実際の定義とエントリ自身の名前だけです。
-func recordDefinitions(entry, content string, funcs template.FuncMap, definedBy map[string]string) error {
+// 判定を隔離した解析結果で行うのは、root を走査すると他のエントリが定義済みの名前と
+// 区別できないためです。なお {{template "x"}} による参照は構文木を持たないエントリを
+// 作るため、ここで扱われるのは {{define "x"}} による実際の定義とエントリ自身の名前だけです。
+func parseEntry(entry, content string, funcs template.FuncMap, definedBy map[string]string) (*template.Template, error) {
 	scratch := template.New(entry)
 	if len(funcs) > 0 {
 		scratch = scratch.Funcs(funcs)
 	}
 	if _, err := scratch.Parse(content); err != nil {
-		return fmt.Errorf("プロンプト '%s' の解析に失敗: %w", entry, err)
+		return nil, fmt.Errorf("プロンプト '%s' の解析に失敗: %w", entry, err)
 	}
 
 	for _, tmpl := range scratch.Templates() {
@@ -169,19 +208,40 @@ func recordDefinitions(entry, content string, funcs template.FuncMap, definedBy 
 		}
 
 		if owner, seen := definedBy[name]; seen && owner != entry {
-			return fmt.Errorf("%w: '%s' が '%s' と '%s' の両方で定義されています",
+			return nil, fmt.Errorf("%w: '%s' が '%s' と '%s' の両方で定義されています",
 				ErrDuplicateDefinition, name, owner, entry)
 		}
 		definedBy[name] = entry
 	}
 
+	return scratch, nil
+}
+
+// attach は、隔離して解析した構文木を共有の名前空間へ移します。
+// 構文木を渡すだけなので、同じ内容をもう一度解析することはありません。
+// 構文木を持たないエントリ（{{template "x"}} による未定義への参照）は、
+// 定義済みの構文木を消さないよう対象外にします。
+func attach(root *template.Template, parsed *template.Template) error {
+	for _, tmpl := range parsed.Templates() {
+		if tmpl.Tree == nil {
+			continue
+		}
+		if _, err := root.AddParseTree(tmpl.Name(), tmpl.Tree); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-// isPartial は、テンプレート名が partial を指すかを判定します。
+// IsPartial は、テンプレート名が partial（モードではなく参照専用の部品）を指すかを判定します。
 // 再帰読み込みで "en/_output" のようなパス形式になる場合を考慮し、末尾の要素で判定します。
 // prefix が空文字の場合、partial の判定自体を行いません（全エントリがモードになります）。
-func isPartial(name, prefix string) bool {
+//
+// Builder は同じ規則で Modes() と Build() の対象を決めます。読み込んだマップを
+// Builder へ渡す前に自前で選り分ける場合は、判定を二重に書かずこの関数を使ってください。
+//
+//	if prompts.IsPartial(name, prompts.DefaultPartialPrefix) { continue }
+func IsPartial(name, prefix string) bool {
 	if prefix == "" {
 		return false
 	}
