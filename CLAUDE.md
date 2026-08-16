@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `github.com/shouni/go-prompt-kit` is a **library module** (no `main` package, no binary). It has two halves:
 
-- **INPUT** (`prompts`, `resource`) — load prompt templates from an `embed.FS` and render them with injected data before sending to an AI.
+- **INPUT** (`prompts`, `resource`, `frontmatter`) — load prompt templates from an `embed.FS` and render them with injected data before sending to an AI.
 - **OUTPUT** (`htmldoc/...`) — turn an AI response (Markdown or JSON) into a complete, styled HTML document.
 
 The two halves share no code and are used independently.
@@ -19,6 +19,7 @@ go test ./...
 go test -race ./...                       # what CI runs
 go test ./... -cover
 go test ./prompts -run TestBuilder_Build  # single test
+go test ./frontmatter -run TestSplit -v
 go test ./htmldoc/markdown -run TestConverter_ExtractTitle -v
 
 go vet ./...
@@ -65,6 +66,37 @@ and closing `#` sequences are all handled by the parser; `inlineText` recursivel
 inline children, which strips emphasis, links, and code spans down to their text. `jsondoc.Converter`
 implements the same method by reading a configurable top-level JSON key (default `"title"`).
 
+### The `frontmatter` package
+
+Prompt files carry their own metadata in a leading `---` block (mode description, category, which
+input kind the mode expects). That block must come off before the body is registered as a template,
+or the YAML lands at the top of the instruction sent to the model.
+
+`Split` owns exactly that cut and nothing else:
+
+- The closing delimiter is a line that is *only* `---`. `----`, `--- yaml`, and ` ---` are not
+  delimiters. An earlier hand-rolled copy in `ap-story` matched on `"\n---"` and mis-split on `----`.
+- Only the delimiter line and the newline ending it are removed, so a blank line right after the
+  delimiter stays in the body. (`ap-comp`'s copy ate that blank line; the standardized behavior
+  keeps it.)
+- Both return values are normalized (BOM stripped, CRLF → LF) whether or not front matter was
+  found. All three hand-rolled copies normalized only the front-matter-present path, so a CRLF file
+  without front matter came back unnormalized. A BOM or CRLF is invisible in an editor and silently
+  disables front matter detection — that is the failure this normalization exists to prevent.
+
+**The package does not parse the metadata, and takes no dependency to do so.** `Decode` /
+`DecodeMap` accept an `UnmarshalFunc func(data []byte, v any) error`, which `yaml.Unmarshal` and
+`json.Unmarshal` both satisfy as-is. This is deliberate: consumers pick and migrate their own YAML
+library (`gopkg.in/yaml.v3` has been frozen at v3.0.1 since 2022 and its upstream repo was archived
+in April 2025; the maintained successor is `go.yaml.in/yaml/v3`). If this module hard-depended on
+one, every swap would need a release here plus a bump in each consumer, and mid-migration a single
+binary would link two YAML parsers deciding the same front matter. A `Parser` type holding the
+function is not an option either — Go methods cannot have type parameters, so `DecodeMap[T]` has to
+be a package-level function.
+
+`DecodeMap` walks keys in sorted order so that, with several malformed entries, the reported key
+does not change between runs. Entries with no front matter keep their key and get `T`'s zero value.
+
 ### The `prompts` / `resource` flow
 
 Dependent repos load an `embed.FS` into a mode→prompt map and execute one mode at a time. `prompts.LoadFS` collapses the whole flow; `resource.Load` + `prompts.NewBuilder` remain available separately.
@@ -93,6 +125,11 @@ out, _     := builder.Build("summarize", data)
 - Options use the functional-option pattern: an `options.go` per package exporting `WithXxx()` returning `Option func(*config)`, applied into an unexported `config` struct that the constructor consumes. Constructors take `opts ...Option` so adding options stays backward compatible.
 - Tests are table-driven with `github.com/stretchr/testify` (`assert` / `require`) and named `TestType_Method`.
 - Errors are wrapped with `%w` at every layer boundary.
+- Direct dependencies are deliberately minimal: `goldmark` (for `htmldoc/markdown`) and `testify`
+  (tests only). `prompts`, `resource`, and `frontmatter` use the standard library alone. Before
+  adding a `require`, check whether the consumer can inject the thing instead — `frontmatter`'s
+  `UnmarshalFunc` is the pattern to follow.
+
 ## API stability
 
 The module is tagged `v1.x` and is consumed by five sibling repositories under `~/GolandProjects`

@@ -28,6 +28,12 @@
 * **🔍 Expand**: データなしで partial 展開済みの本文を取得。カタログ表示や本文の検査に。
 * **🛡 Collision Detection**: 名前の衝突・空ファイル・定義の重複を初期化時に検知。
 
+### 📝 [frontmatter] プロンプト先頭のメタデータ
+
+* **✂️ Split**: `---` で挟んだ front matter を本文から切り離し、メタデータが AI への指示に紛れ込むのを防止。
+* **🔌 Pluggable Decode**: YAML ライブラリを固定せず、`yaml.Unmarshal` などを `UnmarshalFunc` として受け取る設計。**このパッケージの依存は標準ライブラリのみ**。
+* **👀 Invisible Diff Normalization**: BOM と CRLF を判定前に揃えるため、「front matter を書いたのに認識されない」が起きません。
+
 ### 📡 [htmldoc] ドキュメント配信エンジン
 
 * **📑 Markdown to HTML**: AI のレスポンスを、スタイル済みの完全な HTML ドキュメントへ変換。
@@ -118,6 +124,32 @@ text, err := builder.Expand("review")
 `ErrCyclicTemplate` として検出されます。データの起点が変わる
 `{{template "x" .Foo}}` は展開できないため `ErrNotExpandable` を返します。
 
+### プロンプト先頭のメタデータ（front matter）を切り離す
+
+モードの説明をプロンプト自身に持たせると、モードを足す作業がファイルを1つ置くだけで
+済みます。ただしメタデータをそのままテンプレートへ渡すと、AI への指示の先頭に
+YAML が紛れ込みます。`frontmatter` は、その切り離しだけを担います。
+
+```go
+files, err := resource.Load(assets.Prompts, "prompts", "", resource.WithExtensions(".md"))
+bodies, fronts := frontmatter.SplitMap(files)
+
+// メタデータの構造はアプリが決めます。解析関数も呼び出し側が渡します。
+infos, err := frontmatter.DecodeMap[ModeInfo](fronts, yaml.Unmarshal)
+
+builder, err := prompts.NewBuilder(bodies)
+```
+
+**メタデータの書式はこのパッケージでは解釈しません。** `UnmarshalFunc` は
+`func(data []byte, v any) error` なので、`yaml.Unmarshal` も `json.Unmarshal` も
+そのまま渡せます。YAML ライブラリを固定しないのは、その選択と乗り換えを利用側の
+ペースで行えるようにするためです（固定すると、乗り換えのたびにこのモジュールの
+リリースと足並みを揃える必要が生じ、移行の途中では 1 つのバイナリに 2 つの実装が載ります）。
+
+終了の区切りとみなすのは `---` だけからなる行です。`----` のように文字数が違う行は
+区切りとみなしません。区切り行とその行末の改行だけを取り除くので、区切りの直後の
+空行は本文に残ります。
+
 ### Markdown を HTML ドキュメントへ変換する
 
 ```go
@@ -164,6 +196,7 @@ err = doc.Run(w, "", reviewJSON)
 ```text
 go-prompt-kit/
 ├── prompts/           # 【INPUT】モード管理・partial・テンプレート実行
+├── frontmatter/       # 【INPUT】プロンプト先頭のメタデータの切り離し（依存なし）
 ├── htmldoc/           # 【OUTPUT】ドキュメント配信（Document = 変換 + レンダリングの実行）
 │   ├── ports/         #   - 抽象インターフェース定義 (Converter/Renderer/Runner)
 │   ├── markdown/      #   - Markdown→HTMLフラグメント変換・タイトル抽出
@@ -176,6 +209,7 @@ go-prompt-kit/
 
 ## ⚠️ 補足 (Notes)
 
+* `frontmatter.Split` は改行を LF へ揃え、先頭の BOM を取り除いて返します（front matter の有無にかかわらず）。どちらもエディタ上で見えないまま判定を外すため、判定前に揃えます。
 * `htmldoc.Document` は入力形式に関知しません。Markdown か JSON かは注入する `ports.Converter` が決めます。
 * `ports.Converter.ExtractTitle` は形式非依存です。`jsondoc.Converter` はこれを「トップレベルの `title` キーの取得」として実装しています（キーは `jsondoc.WithTitleKey` で変更可能）。
 * `markdown.WithUnsafeHTML(true)` は Markdown 中の生 HTML をそのまま出力します。信頼できない入力に対しては有効化しないでください。同様に `renderer.WithCSS` の内容もエスケープされずに `<style>` へ挿入されます。
