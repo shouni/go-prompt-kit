@@ -13,9 +13,9 @@ type Renderer struct {
 	css template.CSS // CSSをキャッシュしてパフォーマンスを向上させます
 }
 
-// NewRenderer は、アセットを事前にロードしてインスタンスを生成します。
+// New は、アセットを事前にロードしてインスタンスを生成します。
 // オプションを指定しない場合は、埋め込みの template.html と default.css を使用します。
-func NewRenderer(opts ...Option) (*Renderer, error) {
+func New(opts ...Option) (*Renderer, error) {
 	cfg := &config{}
 	for _, opt := range opts {
 		opt(cfg)

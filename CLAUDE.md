@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `github.com/shouni/go-prompt-kit` is a **library module** (no `main` package, no binary). It has two halves:
 
 - **INPUT** (`prompts`, `resource`) — load prompt templates from an `embed.FS` and render them with injected data before sending to an AI.
-- **OUTPUT** (`md/...`) — turn an AI response (Markdown or JSON) into a complete, styled HTML document.
+- **OUTPUT** (`htmldoc/...`) — turn an AI response (Markdown or JSON) into a complete, styled HTML document.
 
 The two halves share no code and are used independently.
 
@@ -19,7 +19,7 @@ go test ./...
 go test -race ./...                       # what CI runs
 go test ./... -cover
 go test ./prompts -run TestBuilder_Build  # single test
-go test ./md/converter -run TestGoldmarkConverter_ExtractTitleFromMarkdown -v
+go test ./htmldoc/markdown -run TestConverter_ExtractTitle -v
 
 go vet ./...
 test -z "$(gofmt -l .)"                   # CI fails on any unformatted file
@@ -30,23 +30,40 @@ CI (`.github/workflows/ci.yml`) runs build/vet/gofmt/race-test, golangci-lint, a
 
 ## Architecture
 
-### The `md` pipeline
+### The `htmldoc` pipeline
 
-`md/ports/interfaces.go` defines the only three abstractions; everything else is an implementation or a wiring helper.
+`htmldoc/ports/interfaces.go` defines the only three abstractions; everything else is an
+implementation or the wiring that joins them.
 
 ```
 input bytes ──> Converter.Convert() ──> HTML fragment ──> Renderer.Render(w, fragment, lang, title) ──> full HTML doc
-                        └── Runner orchestrates both and resolves the title ──┘
+                        └── htmldoc.Document orchestrates both and resolves the title ──┘
 ```
 
-- **Converter** (`md/converter` for Markdown via goldmark, `md/jsonconverter` for JSON via a caller-supplied `html/template`) produces a *fragment*, never a whole document.
-- **Renderer** (`md/renderer`) wraps a fragment in `template.html` and inlines `default.css`, both `go:embed`-ed in `md/renderer/data.go`. `WithTemplate` / `WithTemplateText` / `WithCSS` override either one; `WithExtraCSS` appends to whichever stylesheet is in effect (later wins, so callers can add component styles without copying the 270-line default).
-- **Runner** (`md/runner`) joins the two. `DocumentRunner.Run` resolves the title in this order: explicit `title` argument → `Converter.ExtractTitleFromMarkdown(input)` → the default title. `lang` and the default title come from `WithLang` / `WithDefaultTitle` (defaults `"ja-jp"` and `"Document"`).
-- **Builder** (`md/builder`) is a convenience factory. It builds the Markdown converter and the embedded-asset renderer *only when neither is injected*, so `WithConverter` / `WithRenderer` let a JSON pipeline go through the same factory.
+- **Converter** (`htmldoc/markdown` for Markdown via goldmark, `htmldoc/jsondoc` for JSON via a
+  caller-supplied `html/template`) produces a *fragment*, never a whole document. Each package
+  names its implementation `Converter` and constructs it with `New`.
+- **Renderer** (`htmldoc/renderer`) wraps a fragment in `template.html` and inlines `default.css`,
+  both `go:embed`-ed in `htmldoc/renderer/data.go`. `WithTemplate` / `WithTemplateText` / `WithCSS`
+  override either one; `WithExtraCSS` appends to whichever stylesheet is in effect (later wins, so
+  callers can add component styles without copying the 270-line default).
+- **`htmldoc.Document`** (`htmldoc/document.go`) is the only `ports.Runner` implementation and the
+  package's entry point. `htmldoc.New` builds the Markdown converter and the embedded-asset renderer
+  *only when neither is injected*, so `WithConverter` / `WithRenderer` let a JSON pipeline go through
+  the same constructor. `Document.Run(w, title, input)` writes straight to an `io.Writer` — it never
+  buffers the whole document on the caller's behalf. The title resolves in this order: explicit
+  `title` argument → `Converter.ExtractTitle(input)` → the default title. `lang` and the default
+  title come from `WithLang` / `WithDefaultTitle` (defaults `"ja-jp"` and `"Document"`).
 
-A naming quirk that is easy to misread: `Converter.ExtractTitleFromMarkdown` is on the interface for *all* converters, not just Markdown ones. `JSONConverter` implements it by reading a configurable top-level JSON key (default `"title"`), which has nothing to do with Markdown. The interface method keeps its old name for v1 compatibility; the runner type does not (`MarkdownToHTMLRunner` is now a deprecated alias of `DocumentRunner`).
+`ports` stays a separate package because both the implementations (`jsondoc` asserts
+`var _ ports.Converter`) and the consumer (`htmldoc`) reference the interfaces; merging them into
+`htmldoc` would make `jsondoc` → `htmldoc` → `jsondoc` cycles possible.
 
-`md/converter.ExtractTitleFromMarkdown` parses with goldmark and walks the AST for the first `ast.Heading`, so fenced and indented code blocks, setext headings, and closing `#` sequences are all handled by the parser. `inlineText` recursively collects text from inline children, which strips emphasis, links, and code spans down to their text.
+`ExtractTitle` is on the interface for *all* converters. `markdown.Converter` parses with goldmark
+and walks the AST for the first `ast.Heading`, so fenced and indented code blocks, setext headings,
+and closing `#` sequences are all handled by the parser; `inlineText` recursively collects text from
+inline children, which strips emphasis, links, and code spans down to their text. `jsondoc.Converter`
+implements the same method by reading a configurable top-level JSON key (default `"title"`).
 
 ### The `prompts` / `resource` flow
 
@@ -76,22 +93,29 @@ out, _     := builder.Build("summarize", data)
 - Options use the functional-option pattern: an `options.go` per package exporting `WithXxx()` returning `Option func(*config)`, applied into an unexported `config` struct that the constructor consumes. Constructors take `opts ...Option` so adding options stays backward compatible.
 - Tests are table-driven with `github.com/stretchr/testify` (`assert` / `require`) and named `TestType_Method`.
 - Errors are wrapped with `%w` at every layer boundary.
-
 ## API stability
 
-The module is tagged `v1.x` and is consumed by six sibling repositories under `~/GolandProjects` (`ap-voice`, `ap-chain`, `ap-comp`, `ap-mv`, `git-gemini-web`, `gemini-reviewer-core`), all pinned to a released tag with no `replace` directives. Renaming or changing the signature of anything exported — especially the `md/ports` interfaces — breaks all of them. Prefer additive changes: variadic options on existing constructors, and type aliases (`MarkdownToHTMLRunner = DocumentRunner`) when a name has to change.
+The module is tagged `v1.x` and is consumed by five sibling repositories under `~/GolandProjects`
+(`ap-comp`, `ap-mv`, `ap-story`, `ap-voice`, `git-gemini-web`), all pinned to a released tag with no
+`replace` directives. **Every one of them imports `prompts` and/or `resource` only** — nothing
+consumes `htmldoc/...`. Renaming or changing the signature of anything exported from `prompts` or
+`resource` breaks all five; prefer additive changes there (variadic options on existing
+constructors, type aliases when a name has to change).
 
-To verify compatibility against the real consumers without touching their files, build them through a temporary workspace:
+`htmldoc/...` was reshaped in place precisely because it had no consumers (it was `md/...`, with
+`md/converter`, `md/jsonconverter`, `md/runner` and `md/builder` as separate packages). Before
+assuming that freedom still holds, re-check for importers.
+
+To verify compatibility against the real consumers without touching their files, build them through
+a temporary workspace:
 
 ```bash
 cat > /tmp/gpk.work <<'EOF'
 go 1.26
 use (
 	/Users/kensukeshouni/GolandProjects/go-prompt-kit
-	/Users/kensukeshouni/GolandProjects/gemini-reviewer-core
+	/Users/kensukeshouni/GolandProjects/ap-comp
 )
 EOF
-cd /Users/kensukeshouni/GolandProjects/gemini-reviewer-core && GOWORK=/tmp/gpk.work go test ./...
+cd /Users/kensukeshouni/GolandProjects/ap-comp && GOWORK=/tmp/gpk.work go test ./...
 ```
-
-Note that `gemini-reviewer-core` is the only consumer of `md/...`; the other five use `prompts` + `resource` only.

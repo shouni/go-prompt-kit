@@ -28,12 +28,12 @@
 * **🔍 Expand**: データなしで partial 展開済みの本文を取得。カタログ表示や本文の検査に。
 * **🛡 Collision Detection**: 名前の衝突・空ファイル・定義の重複を初期化時に検知。
 
-### 📡 [md] ドキュメント配信エンジン
+### 📡 [htmldoc] ドキュメント配信エンジン
 
 * **📑 Markdown to HTML**: AI のレスポンスを、スタイル済みの完全な HTML ドキュメントへ変換。
 * **🧾 JSON to HTML**: 構造化出力を、呼び出し側が指定した `html/template` で任意の形にHTMLフラグメント化。スキーマやテンプレートはライブラリ側では関知しない汎用設計。
 * **🎨 Style-Injected Rendering**: 組み込みの CSS とテンプレートで即座に成果物を出力。差し替えも、既定を保った追記も可能。
-* **🧩 Modular Architecture**: Converter, Renderer, Runner が分離され、特定のロジックのみを差し替え可能。
+* **🧩 Modular Architecture**: Converter と Renderer が `ports` のインターフェース越しに分離され、片方だけ差し替え可能。
 * **🌲 AST-based Title Extraction**: 構文木からタイトルを抽出するため、コードブロック内の `#` や setext 形式も正しく判定。
 
 ---
@@ -121,21 +121,17 @@ text, err := builder.Expand("review")
 ### Markdown を HTML ドキュメントへ変換する
 
 ```go
-b, err := builder.New(
-    builder.WithEnableHardWraps(true),
-    builder.WithLang("ja-jp"),
+doc, err := htmldoc.New(
+    htmldoc.WithConverterOptions(markdown.WithHardWraps(true)),
+    htmldoc.WithLang("ja-jp"),
 )
 if err != nil {
     return err
 }
 
-runner, err := b.BuildRunner()
-if err != nil {
-    return err
-}
-
 // タイトルに空文字を渡すと、最初の見出しから自動抽出されます
-buf, err := runner.Run("", markdown)
+// 出力は io.Writer へ直接書き出されます（http.ResponseWriter やファイルにも渡せます）
+err = doc.Run(w, "", src)
 ```
 
 ### JSON を任意のテンプレートで HTML 化する
@@ -148,20 +144,15 @@ CSS は `WithRendererOptions` から指定します。`renderer.WithCSS` は既�
 ```go
 tpl := template.Must(template.New("fragment").Parse(fragmentHTML))
 
-b, err := builder.New(
-    builder.WithConverter(jsonconverter.New(tpl)),
-    builder.WithRendererOptions(renderer.WithCSS(myCSS)),
+doc, err := htmldoc.New(
+    htmldoc.WithConverter(jsondoc.New(tpl)),
+    htmldoc.WithRendererOptions(renderer.WithCSS(myCSS)),
 )
 if err != nil {
     return err
 }
 
-runner, err := b.BuildRunner()
-if err != nil {
-    return err
-}
-
-buf, err := runner.Run("", reviewJSON)
+err = doc.Run(w, "", reviewJSON)
 ```
 
 ---
@@ -173,13 +164,11 @@ buf, err := runner.Run("", reviewJSON)
 ```text
 go-prompt-kit/
 ├── prompts/           # 【INPUT】モード管理・partial・テンプレート実行
-├── md/                # 【OUTPUT】ドキュメント配信
-│   ├── ports/         #   - 抽象インターフェース定義
-│   ├── converter/     #   - Markdown 解析・タイトル抽出
-│   ├── jsonconverter/ #   - JSON→HTMLフラグメント変換（テンプレートは呼び出し側が注入）
-│   ├── renderer/      #   - HTML レンダリング (CSS/Template)
-│   ├── runner/        #   - 変換ワークフローの実行
-│   └── builder/       #   - 具象インスタンスの構築・依存の注入
+├── htmldoc/           # 【OUTPUT】ドキュメント配信（Document = 変換 + レンダリングの実行）
+│   ├── ports/         #   - 抽象インターフェース定義 (Converter/Renderer/Runner)
+│   ├── markdown/      #   - Markdown→HTMLフラグメント変換・タイトル抽出
+│   ├── jsondoc/       #   - JSON→HTMLフラグメント変換（テンプレートは呼び出し側が注入）
+│   └── renderer/      #   - HTML レンダリング (CSS/Template)
 └── resource/          # 【BASE】fs.FS からのアセット自動スキャン
 ```
 
@@ -187,9 +176,9 @@ go-prompt-kit/
 
 ## ⚠️ 補足 (Notes)
 
-* `runner.MarkdownToHTMLRunner` は `runner.DocumentRunner` の別名です。入力形式は注入する Converter が決めるため、新しいコードでは `DocumentRunner` / `NewDocumentRunner` を使用してください。
-* `ports.Converter.ExtractTitleFromMarkdown` は名前に反して形式非依存です。`JSONConverter` はこれを「トップレベルの `title` キーの取得」として実装しています。互換性のため v1 では改名していません。
-* `converter.WithUnsafeHTML(true)` は Markdown 中の生 HTML をそのまま出力します。信頼できない入力に対しては有効化しないでください。同様に `renderer.WithCSS` の内容もエスケープされずに `<style>` へ挿入されます。
+* `htmldoc.Document` は入力形式に関知しません。Markdown か JSON かは注入する `ports.Converter` が決めます。
+* `ports.Converter.ExtractTitle` は形式非依存です。`jsondoc.Converter` はこれを「トップレベルの `title` キーの取得」として実装しています（キーは `jsondoc.WithTitleKey` で変更可能）。
+* `markdown.WithUnsafeHTML(true)` は Markdown 中の生 HTML をそのまま出力します。信頼できない入力に対しては有効化しないでください。同様に `renderer.WithCSS` の内容もエスケープされずに `<style>` へ挿入されます。
 
 ---
 

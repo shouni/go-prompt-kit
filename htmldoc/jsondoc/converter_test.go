@@ -1,4 +1,4 @@
-package jsonconverter
+package jsondoc
 
 import (
 	"html/template"
@@ -14,7 +14,7 @@ func mustParse(t *testing.T, name, body string) *template.Template {
 	return tpl
 }
 
-func TestJSONConverter_Convert(t *testing.T) {
+func TestConverter_Convert(t *testing.T) {
 	tpl := mustParse(t, "test", `<h1>{{.title}}</h1><p>{{.summary}}</p>`)
 	c := New(tpl)
 
@@ -55,7 +55,7 @@ func TestJSONConverter_Convert(t *testing.T) {
 	}
 }
 
-func TestJSONConverter_ExtractTitleFromMarkdown(t *testing.T) {
+func TestConverter_ExtractTitle(t *testing.T) {
 	tpl := mustParse(t, "test", `{{.title}}`)
 
 	tests := []struct {
@@ -90,8 +90,8 @@ func TestJSONConverter_ExtractTitleFromMarkdown(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := New(tpl, tt.opts...)
-			if got := c.ExtractTitleFromMarkdown([]byte(tt.input)); got != tt.want {
-				t.Errorf("ExtractTitleFromMarkdown() = %v, want %v", got, tt.want)
+			if got := c.ExtractTitle([]byte(tt.input)); got != tt.want {
+				t.Errorf("ExtractTitle() = %v, want %v", got, tt.want)
 			}
 		})
 	}
