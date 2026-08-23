@@ -67,7 +67,7 @@ func WithFuncs(funcs template.FuncMap) Option {
 // 取り除くのは末尾の改行（LF / CRLF）だけです。行末の空白や本文中の改行は
 // そのまま残るため、意図した空行は partial 側に空行を書けば保てます。
 //
-//	builder, err := prompts.LoadFS(files, "prompts", prompts.WithTrimPartials())
+//	builder, err := prompts.LoadFS(promptFiles, "prompts", prompts.WithTrimPartials())
 //
 // 既定で取り除かないのは、末尾で参照している既存の呼び出しの出力を
 // 変えないためです。
