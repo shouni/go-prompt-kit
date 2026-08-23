@@ -22,7 +22,7 @@
 
 * **📦 Dynamic Resource Loader**: `embed.FS` からプロンプトを自動スキャンし、モード名へマッピング（再帰・拡張子フィルタ対応）。
 * **🛠 Template-based Builder**: `text/template` にデータを注入して動的にプロンプトを生成。
-* **🧱 Partial Templates**: 共通の指示を部品として切り出し、複数モードから共有。
+* **🧱 Partial Templates**: 共通の指示を部品として切り出し、複数モードから共有。本文の途中へ差し込む場合は `WithTrimPartials` で末尾の改行を落とせます。
 * **🔧 Custom Functions**: 独自のテンプレート関数を登録し、本文と partial の双方から利用。
 * **🎯 Default Mode**: モード未指定・未知のモードのフォールバック先を指定。
 * **🔍 Expand**: データなしで partial 展開済みの本文を取得。カタログ表示や本文の検査に。
@@ -80,6 +80,18 @@ builder, err := prompts.LoadFS(promptFiles, "prompts", prompts.WithRecursive())
 prompts/_output.md   → {{template "_output" .}} で参照する部品
 prompts/review.md    → モード "review"
 ```
+
+partial を**本文の途中**へ差し込む場合は `WithTrimPartials` を検討してください。
+ファイルは改行で終わるのが普通なので、そのままだと差し込んだ位置にだけ空行が入り、
+空行が段落の区切りを意味する形式（Markdown など）ではそこだけ段落が分かれます。
+末尾で参照している限り出力に差は出ないため、本文の途中で使った箇所だけで表面化します。
+
+```go
+builder, err := prompts.LoadFS(promptFiles, "prompts", prompts.WithTrimPartials())
+```
+
+取り除くのは partial 末尾の改行だけです。モード本文の末尾や行末の空白は変わりません。
+既定で取り除かないのは、末尾で参照している既存の呼び出しの出力を変えないためです。
 
 テンプレート関数は `WithFuncs` で登録します。partial からも呼び出せます。
 

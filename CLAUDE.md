@@ -77,8 +77,8 @@ or the YAML lands at the top of the instruction sent to the model.
 - The closing delimiter is a line that is *only* `---`. `----`, `--- yaml`, and ` ---` are not
   delimiters. An earlier hand-rolled copy in `ap-story` matched on `"\n---"` and mis-split on `----`.
 - Only the delimiter line and the newline ending it are removed, so a blank line right after the
-  delimiter stays in the body. (`ap-comp`'s copy ate that blank line; the standardized behavior
-  keeps it.)
+  delimiter stays in the body. (One of the hand-rolled copies ate that blank line; the standardized
+  behavior keeps it.)
 - Both return values are normalized (BOM stripped, CRLF → LF) whether or not front matter was
   found. All three hand-rolled copies normalized only the front-matter-present path, so a CRLF file
   without front matter came back unnormalized. A BOM or CRLF is invisible in an editor and silently
@@ -112,9 +112,10 @@ out, _     := builder.Build("summarize", data)
 - `resource.Load(fsys, rootDir, opts...)` derives the *mode name* from the filename by stripping the extension, and returns an error on mode-name collision. It is non-recursive by default; `WithRecursive` walks subdirectories and makes the mode name the `/`-joined path relative to `rootDir` (`prompts/en/rock.md` → `en/rock`). `WithExtensions` filters by extension. `WithPrefix` limits loading to files with that prefix and strips it from the mode name — it is an option rather than a positional parameter because every real call site passed `""`.
 - **`LoadFS` is the entry point; prefer it over hand-wiring.** It used to be dead API — all five consumers called `resource.Load` + `NewBuilder` separately, because each needs a per-entry transform between the two (front matter, or a metadata comment). `WithFrontMatter` closes that gap: `LoadFS` splits each entry with `frontmatter.SplitMap`, registers only the body, and keeps the raw front matter behind `Builder.FrontMatter(name)` / `FrontMatters()`. The manual `resource.Load` + `frontmatter.SplitMap` + `NewBuilder` path stays available for callers that need the intermediate maps.
 - **Load-only options are rejected by `NewBuilder`.** `WithPrefix` / `WithRecursive` / `WithExtensions` / `WithFrontMatter` only mean something while reading files, and used to be silently ignored here. They now record their name in `config.loadOnly`, and `NewBuilder` fails with `ErrLoadOnlyOption` listing them. `LoadFS` consumes them itself and calls the unexported `newBuilder`, bypassing the check.
+- **A partial keeps its trailing newline unless `WithTrimPartials` is set.** Files end with a newline, so a partial referenced *mid-body* inserts a blank line at that point — which in Markdown is a paragraph break. Referenced at the end of a body it makes no visible difference, so the mismatch surfaces only wherever a consumer happens to place one mid-body — which is usually a small minority of the references, and easy to miss without a golden of the rendered output. Trimming is opt-in rather than the default because the default would change what every existing caller renders. The trim runs after the empty-content check, so a newline-only partial still registers as a partial that outputs nothing.
 - **All templates share one namespace.** Every entry is registered as an associated template on a single root, so a mode body can pull in another entry with `{{template "_name" .}}` — including a data argument, since expansion is native `text/template`, not string substitution.
 - Because the namespace is shared, two entries that `{{define}}` the same name would silently overwrite each other (last writer wins). `parseEntry` parses each entry **in isolation** to learn exactly which names it defines and rejects cross-entry duplicates with `ErrDuplicateDefinition`; isolation matters because scanning the shared root cannot distinguish "this entry defined it" from "an earlier entry defined it". `attach` then moves those parse trees into the root with `AddParseTree`, so **each entry is parsed once**. Re-parsing into the root was not just wasted work — it made the error branch there unreachable, since the isolated parse hits the same syntax error first. A `{{template "x"}}` *reference* produces a tree-less entry, which both functions skip: it never trips the duplicate check and never clobbers a real definition in the root.
-- Entries whose name's last path element starts with `DefaultPartialPrefix` (`_`) are **partials**: registered for reference but excluded from `Modes()` and rejected by `Build`. A map containing only partials is an error. `WithPartialPrefix` changes the prefix; passing `""` disables partial detection entirely so every entry becomes a mode. The predicate is exported as `IsPartial(name, prefix)` so callers filtering a raw map do not re-implement it — `ap-voice` had its own copy that tested the whole key instead of `path.Base`, which would have diverged the moment it used `WithRecursive`.
+- Entries whose name's last path element starts with `DefaultPartialPrefix` (`_`) are **partials**: registered for reference but excluded from `Modes()` and rejected by `Build`. A map containing only partials is an error. `WithPartialPrefix` changes the prefix; passing `""` disables partial detection entirely so every entry becomes a mode. The predicate is exported as `IsPartial(name, prefix)` so callers filtering a raw map do not re-implement it — a consumer's own copy tested the whole key instead of `path.Base`, which would have diverged the moment it used `WithRecursive`.
 - `WithDefaultMode` makes `Build` fall back to a named mode for any unregistered mode, including `""`. The default mode must itself be a registered non-partial mode or `NewBuilder` fails — this catches typos at construction. `Has` deliberately ignores the fallback and reports actual registration.
 - `Expand` (`prompts/expand.go`) is the counterpart to `Build`: it returns the mode's **source** with partials inlined but `{{.Field}}` actions left untouched, so callers can show or inspect a prompt without having data. It walks the `text/template/parse` tree and splices referenced templates into `TemplateNode` positions, descending into `if`/`range`/`with` bodies. It never mutates the stored trees — branch nodes are value-copied and a fresh `ListNode` is built — because `Build` keeps using them. A reference that changes the data context (`{{template "x" .Foo}}`) is rejected with `ErrNotExpandable` rather than silently rebinding `.`; cycles give `ErrCyclicTemplate`.
 - `newBuilder` sets `Option("missingkey=error")` on the root (the option lives in the shared `common` struct, so it applies to every associated template). A template referencing a field absent from the data fails at `Build` time rather than emitting `<no value>`. `WithFuncs` registers custom template functions before parsing; they are available to modes and partials alike.
@@ -134,12 +135,11 @@ out, _     := builder.Build("summarize", data)
 
 ## API stability
 
-The module is tagged `v1.x` and is consumed by five sibling repositories under `~/GolandProjects`
-(`ap-comp`, `ap-mv`, `ap-story`, `ap-voice`, `git-gemini-web`), all pinned to a released tag with no
-`replace` directives. **Every one of them imports `prompts` and/or `resource` only** — nothing
-consumes `htmldoc/...`. Renaming or changing the signature of anything exported from `prompts` or
-`resource` breaks all five; prefer additive changes there (variadic options on existing
-constructors, type aliases when a name has to change).
+The module is tagged `v1.x` and is consumed by the sibling repositories checked out under
+`~/GolandProjects`, all pinned to a released tag with no `replace` directives. **Every one of them
+imports `prompts` and/or `resource` only** — nothing consumes `htmldoc/...`. Renaming or changing the signature of anything
+exported from `prompts` or `resource` breaks all of them at once; prefer additive changes there
+(variadic options on existing constructors, type aliases when a name has to change).
 
 `htmldoc/...` was reshaped in place precisely because it had no consumers (it was `md/...`, with
 `md/converter`, `md/jsonconverter`, `md/runner` and `md/builder` as separate packages). Before
@@ -150,11 +150,14 @@ a temporary workspace:
 
 ```bash
 cat > /tmp/gpk.work <<'EOF'
-go 1.26
+go 1.26.6
 use (
 	/Users/kensukeshouni/GolandProjects/go-prompt-kit
-	/Users/kensukeshouni/GolandProjects/ap-comp
+	/Users/kensukeshouni/GolandProjects/ap-story
 )
 EOF
-cd /Users/kensukeshouni/GolandProjects/ap-comp && GOWORK=/tmp/gpk.work go test ./...
+cd /Users/kensukeshouni/GolandProjects/ap-story && GOWORK=/tmp/gpk.work go test ./...
 ```
+
+Add the other consumers to the `use` block to cover them in one run. The `go` directive has to be
+at least as new as every module listed, or the workspace is rejected before anything builds.

@@ -91,6 +91,11 @@ func newBuilder(templates map[string]string, cfg *config) (*Builder, error) {
 		if content == "" {
 			return nil, fmt.Errorf("プロンプトテンプレート '%s' の読み込みに失敗しました: 内容が空です", name)
 		}
+		// 空かどうかを見てから取り除きます。改行だけの partial は、これまでどおり
+		// 「何も出力しない partial」として登録されます（空の内容とは別の誤りです）。
+		if cfg.trimPartials && IsPartial(name, cfg.partialPrefix) {
+			content = strings.TrimRight(content, "\r\n")
+		}
 
 		parsed, err := parseEntry(name, content, cfg.funcs, definedBy)
 		if err != nil {
