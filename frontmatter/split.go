@@ -4,7 +4,7 @@
 // プロンプト自身に持たせるために使います。本文へ紛れ込むとAIへの指示の先頭に
 // メタデータが混ざるため、テンプレートとして登録する前に切り離します。
 //
-//	files, _ := resource.Load(assets.Prompts, "prompts")
+//	files, _ := resource.Load(promptFiles, "prompts")
 //	bodies, fronts := frontmatter.SplitMap(files)
 //	infos, _ := frontmatter.DecodeMap[ModeInfo](fronts, yaml.Unmarshal)
 //	builder, _ := prompts.NewBuilder(bodies)
@@ -13,8 +13,7 @@
 // prompts.LoadFS に prompts.WithFrontMatter を渡すことでも行えます。
 //
 // メタデータの書式はこのパッケージでは解釈しません。解析関数は呼び出し側が
-// UnmarshalFunc として渡します（Decode / DecodeMap）。YAMLライブラリの選択と
-// 乗り換えを利用側のペースで行えるようにするためで、このパッケージ自体は
+// UnmarshalFunc として渡します（理由は UnmarshalFunc を参照）。このパッケージ自体は
 // 標準ライブラリだけに依存します。
 package frontmatter
 

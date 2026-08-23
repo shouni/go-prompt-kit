@@ -14,6 +14,7 @@ type config struct {
 	defaultMode      string
 	resourceOptions  []resource.Option
 	splitFrontMatter bool
+	trimPartials     bool
 
 	// loadOnly は、指定された「読み込み時のみ有効なオプション」の名前です。
 	// NewBuilder に渡された場合、黙って無視せずエラーにするために記録します。
@@ -53,6 +54,26 @@ func WithFuncs(funcs template.FuncMap) Option {
 			c.funcs = make(template.FuncMap, len(funcs))
 		}
 		maps.Copy(c.funcs, funcs)
+	}
+}
+
+// WithTrimPartials は、partial の末尾の改行を取り除いてから登録します。
+//
+// ファイルは改行で終わるのが普通なので、partial を本文の**途中**へ差し込むと、
+// その位置にだけ空行が入ります。末尾で参照している限り出力に差は出ないため、
+// 本文の途中で使った箇所だけで表面化します。空行が段落の区切りを意味する形式
+// （Markdown など）では、そこだけ段落が分かれた文章になります。
+//
+// 取り除くのは末尾の改行（LF / CRLF）だけです。行末の空白や本文中の改行は
+// そのまま残るため、意図した空行は partial 側に空行を書けば保てます。
+//
+//	builder, err := prompts.LoadFS(promptFiles, "prompts", prompts.WithTrimPartials())
+//
+// 既定で取り除かないのは、末尾で参照している既存の呼び出しの出力を
+// 変えないためです。
+func WithTrimPartials() Option {
+	return func(c *config) {
+		c.trimPartials = true
 	}
 }
 

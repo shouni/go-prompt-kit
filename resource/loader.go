@@ -1,5 +1,8 @@
-// Package resource は、埋め込みファイルシステムからプレフィックス一致するファイルを
-// 読み込むユーティリティを提供します。
+// Package resource は、ファイルシステム上のディレクトリからファイルを読み込み、
+// 名前をキーとするマップとして返すユーティリティを提供します。
+//
+// 対象の絞り込み（接頭辞・拡張子）とサブディレクトリの走査はオプションで指定します。
+// 主な用途は embed.FS からのプロンプト読み込みですが、fs.FS であれば何でも扱えます。
 package resource
 
 import (
@@ -18,8 +21,8 @@ var ErrNotDirectory = errors.New("ディレクトリではありません")
 // 既定ではサブディレクトリを走査しません。対象の絞り込みと走査方法は
 // WithPrefix / WithExtensions / WithRecursive で変更します。
 //
-//	templates, err := resource.Load(files, "prompts")
-//	templates, err := resource.Load(files, "prompts", resource.WithExtensions(".md"))
+//	templates, err := resource.Load(promptFiles, "prompts")
+//	templates, err := resource.Load(promptFiles, "prompts", resource.WithExtensions(".md"))
 func Load(fileSystem fs.FS, rootDir string, opts ...Option) (map[string]string, error) {
 	cfg := newConfig(opts...)
 

@@ -2,6 +2,7 @@ package prompts
 
 import (
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -178,5 +179,126 @@ func TestNewBuilder_SentinelErrors(t *testing.T) {
 		_, err := NewBuilder(map[string]string{"mode": "{{.Unclosed"})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "プロンプト 'mode' の解析に失敗")
+	})
+}
+
+func TestNewBuilder_TrimPartials(t *testing.T) {
+	// 末尾が改行の partial を、本文の途中と末尾の両方から参照します。
+	// 途中で参照した側にだけ差が出るのが、このオプションが扱う現象です。
+	const partial = "共通の一文。\n"
+	templates := map[string]string{
+		"_shared": partial,
+		"middle":  "前の段落。\n{{template \"_shared\" .}}\n後の段落。",
+		"tail":    "本文。\n{{template \"_shared\" .}}",
+	}
+
+	tests := []struct {
+		name       string
+		opts       []Option
+		wantMiddle string
+		wantTail   string
+	}{
+		{
+			name:       "既定では partial の末尾の改行がそのまま入る",
+			wantMiddle: "前の段落。\n共通の一文。\n\n後の段落。",
+			wantTail:   "本文。\n共通の一文。\n",
+		},
+		{
+			name:       "WithTrimPartials は末尾の改行を取り除く",
+			opts:       []Option{WithTrimPartials()},
+			wantMiddle: "前の段落。\n共通の一文。\n後の段落。",
+			wantTail:   "本文。\n共通の一文。",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := NewBuilder(templates, tt.opts...)
+			require.NoError(t, err)
+
+			middle, err := b.Build("middle", nil)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantMiddle, middle)
+
+			tail, err := b.Build("tail", nil)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantTail, tail)
+		})
+	}
+}
+
+func TestNewBuilder_TrimPartialsScope(t *testing.T) {
+	t.Run("モード本文の末尾の改行は残る", func(t *testing.T) {
+		b, err := NewBuilder(map[string]string{
+			"_shared": "部品。\n",
+			"main":    "本文。\n{{template \"_shared\" .}}末尾。\n",
+		}, WithTrimPartials())
+		require.NoError(t, err)
+
+		got, err := b.Build("main", nil)
+		require.NoError(t, err)
+		assert.Equal(t, "本文。\n部品。末尾。\n", got)
+	})
+
+	t.Run("行末の空白と本文中の改行は変えない", func(t *testing.T) {
+		b, err := NewBuilder(map[string]string{
+			"_shared": "1行目  \n2行目  \n\n",
+			"main":    "{{template \"_shared\" .}}",
+		}, WithTrimPartials())
+		require.NoError(t, err)
+
+		got, err := b.Build("main", nil)
+		require.NoError(t, err)
+		assert.Equal(t, "1行目  \n2行目  ", got)
+	})
+
+	t.Run("CRLF の末尾も取り除く", func(t *testing.T) {
+		b, err := NewBuilder(map[string]string{
+			"_shared": "部品。\r\n",
+			"main":    "{{template \"_shared\" .}}続き。",
+		}, WithTrimPartials())
+		require.NoError(t, err)
+
+		got, err := b.Build("main", nil)
+		require.NoError(t, err)
+		assert.Equal(t, "部品。続き。", got)
+	})
+
+	t.Run("改行だけの partial は空の内容として扱わない", func(t *testing.T) {
+		b, err := NewBuilder(map[string]string{
+			"_blank": "\n",
+			"main":   "前{{template \"_blank\" .}}後",
+		}, WithTrimPartials())
+		require.NoError(t, err)
+
+		got, err := b.Build("main", nil)
+		require.NoError(t, err)
+		assert.Equal(t, "前後", got)
+	})
+
+	t.Run("Expand も取り除いた本文で展開する", func(t *testing.T) {
+		b, err := NewBuilder(map[string]string{
+			"_shared": "部品。\n",
+			"main":    "{{template \"_shared\" .}}続き{{.Field}}。",
+		}, WithTrimPartials())
+		require.NoError(t, err)
+
+		got, err := b.Expand("main")
+		require.NoError(t, err)
+		assert.Equal(t, "部品。続き{{.Field}}。", got)
+	})
+
+	t.Run("LoadFS からも指定できる", func(t *testing.T) {
+		files := fstest.MapFS{
+			"prompts/_shared.md": &fstest.MapFile{Data: []byte("部品。\n")},
+			"prompts/main.md":    &fstest.MapFile{Data: []byte("{{template \"_shared\" .}}続き。\n")},
+		}
+
+		b, err := LoadFS(files, "prompts", WithTrimPartials())
+		require.NoError(t, err)
+
+		got, err := b.Build("main", nil)
+		require.NoError(t, err)
+		assert.Equal(t, "部品。続き。\n", got)
 	})
 }
