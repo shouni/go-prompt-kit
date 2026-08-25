@@ -27,7 +27,7 @@ func Load(fileSystem fs.FS, rootDir string, opts ...Option) (map[string]string, 
 	cfg := newConfig(opts...)
 
 	// fs.WalkDir はファイルを起点にしても走査できてしまうため、
-	// ディレクトリであることを先に確認して従来どおりエラーにします。
+	// ディレクトリであることを先に確認します。
 	info, err := fs.Stat(fileSystem, rootDir)
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリ %s の読み込みに失敗: %w", rootDir, err)

@@ -65,7 +65,7 @@ func TestConverter_ExtractTitle(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "デフォルトキー(title)から抽出",
+			name:  "既定のキー（title）から抽出",
 			input: `{"title":"プロジェクトタイトル"}`,
 			want:  "プロジェクトタイトル",
 		},

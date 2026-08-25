@@ -59,6 +59,30 @@ func WithTypographer(enable bool) Option {
 	}
 }
 
+// WithCJK は、日本語などの東アジア言語向けの改行処理を有効にします。
+//
+// Markdown では段落の途中の改行（ソフト改行）が出力HTMLにもそのまま残り、
+// ブラウザ上では空白として描画されます。単語を空白で区切る言語では正しい挙動ですが、
+// 日本語では文の途中に空白が入ります。
+//
+//	これは日本語の文章で、
+//	途中で改行しています。
+//
+//	無効: <p>これは日本語の文章で、\n途中で改行しています。</p>  → 「、 途中で」と表示される
+//	有効: <p>これは日本語の文章で、途中で改行しています。</p>
+//
+// 取り除かれるのは改行の前後がともに東アジアの全角文字である場合だけなので、
+// 日本語と英文が混在する文書でも英文側の区切りは保たれます。
+//
+// htmldoc の既定の lang は "ja-jp" ですが、他の拡張オプションと揃えて既定では無効です。
+func WithCJK(enable bool) Option {
+	return func(c *config) {
+		if enable {
+			c.extensions = append(c.extensions, extension.CJK)
+		}
+	}
+}
+
 // WithFootnotes は、脚注記法（[^1]）を有効にするオプションです。
 func WithFootnotes(enable bool) Option {
 	return func(c *config) {

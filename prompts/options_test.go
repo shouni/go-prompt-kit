@@ -216,7 +216,7 @@ func TestWithDefaultMode(t *testing.T) {
 		assert.Equal(t, "既定の内容", got)
 	})
 
-	t.Run("未指定なら従来どおりErrUnknownMode", func(t *testing.T) {
+	t.Run("未指定ならErrUnknownMode", func(t *testing.T) {
 		b, err := NewBuilder(templates)
 		require.NoError(t, err)
 

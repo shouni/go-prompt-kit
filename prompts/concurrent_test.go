@@ -60,9 +60,7 @@ func TestBuilder_ConcurrentReaders(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 16 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			assert.Equal(t, []string{"greet"}, b.Modes())
 			assert.True(t, b.Has("greet"))
@@ -73,7 +71,12 @@ func TestBuilder_ConcurrentReaders(t *testing.T) {
 			expanded, err := b.Expand("greet")
 			assert.NoError(t, err)
 			assert.Equal(t, "こんにちは", expanded)
-		}()
+
+			// Expand と同じく構文木を辿るため、木を書き換えていないことに意味があります。
+			fields, err := b.Fields("greet")
+			assert.NoError(t, err)
+			assert.Empty(t, fields)
+		})
 	}
 	wg.Wait()
 }

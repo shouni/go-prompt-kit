@@ -4,7 +4,7 @@ package jsondoc
 type Option func(*Converter)
 
 // WithTitleKey は、ExtractTitle がタイトルとして参照する
-// トップレベルJSONキーを変更します(デフォルトは "title")。
+// トップレベルJSONキーを変更します（既定は "title"）。
 func WithTitleKey(key string) Option {
 	return func(c *Converter) {
 		if key != "" {

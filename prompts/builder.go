@@ -91,8 +91,8 @@ func newBuilder(templates map[string]string, cfg *config) (*Builder, error) {
 		if content == "" {
 			return nil, fmt.Errorf("プロンプトテンプレート '%s' の読み込みに失敗しました: 内容が空です", name)
 		}
-		// 空かどうかを見てから取り除きます。改行だけの partial は、これまでどおり
-		// 「何も出力しない partial」として登録されます（空の内容とは別の誤りです）。
+		// 空かどうかを見てから取り除きます。改行だけの partial は
+		// 「何も出力しない partial」として登録されます（空の内容とは別物です）。
 		if cfg.trimPartials && IsPartial(name, cfg.partialPrefix) {
 			content = strings.TrimRight(content, "\r\n")
 		}
@@ -178,7 +178,7 @@ func (b *Builder) Has(mode string) bool {
 // LoadFS に WithFrontMatter を指定した場合のみ値を持ちます。
 // front matter を持たないエントリと未知のエントリはどちらも空文字を返します。
 //
-// 書式の解釈はこのパッケージでは行いません。frontmatter.Decode へ渡してください。
+// 書式の解釈はこのパッケージでは行いません。frontmatter.Decode / DecodeAs へ渡してください。
 func (b *Builder) FrontMatter(name string) string {
 	return b.fronts[name]
 }
