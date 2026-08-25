@@ -60,9 +60,7 @@ func TestBuilder_ConcurrentReaders(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 16 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			assert.Equal(t, []string{"greet"}, b.Modes())
 			assert.True(t, b.Has("greet"))
@@ -73,7 +71,7 @@ func TestBuilder_ConcurrentReaders(t *testing.T) {
 			expanded, err := b.Expand("greet")
 			assert.NoError(t, err)
 			assert.Equal(t, "こんにちは", expanded)
-		}()
+		})
 	}
 	wg.Wait()
 }
