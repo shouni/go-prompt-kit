@@ -83,19 +83,48 @@ func (d *Document) Run(writer io.Writer, title string, input []byte) error {
 		return nil
 	}
 
-	htmlFragment, err := d.converter.Convert(input)
+	htmlFragment, resolved, err := d.convert(input, title)
 	if err != nil {
-		return fmt.Errorf("HTMLフラグメント生成エラー: %w", err)
+		return err
 	}
 
-	if err := d.renderer.Render(writer, htmlFragment, d.lang, d.resolveTitle(title, input)); err != nil {
+	if err := d.renderer.Render(writer, htmlFragment, d.lang, resolved); err != nil {
 		return fmt.Errorf("HTMLレンダリングに失敗しました: %w", err)
 	}
 
 	return nil
 }
 
+// convert は、HTMLフラグメントと確定したタイトルを返します。
+//
+// タイトルの指定がなく Converter が ports.TitledConverter を実装している場合は、
+// 変換と抽出をまとめて依頼します。そうしないと Convert と ExtractTitle が
+// 同じ入力をそれぞれ解析することになり、入力を2回解析します。
+func (d *Document) convert(input []byte, title string) (fragment []byte, resolved string, err error) {
+	titled, ok := d.converter.(ports.TitledConverter)
+	if title != "" || !ok {
+		fragment, err = d.converter.Convert(input)
+		if err != nil {
+			return nil, "", fmt.Errorf("HTMLフラグメント生成エラー: %w", err)
+		}
+
+		return fragment, d.resolveTitle(title, input), nil
+	}
+
+	fragment, extracted, err := titled.ConvertWithTitle(input)
+	if err != nil {
+		return nil, "", fmt.Errorf("HTMLフラグメント生成エラー: %w", err)
+	}
+	if extracted == "" {
+		extracted = d.defaultTitle
+	}
+
+	return fragment, extracted, nil
+}
+
 // resolveTitle は、呼び出し側の指定・入力からの抽出・既定値の順にタイトルを決定します。
+// 入力からの抽出が要らない場合に無駄な解析をしないよう、Converter が
+// ports.TitledConverter を実装していない場合の経路でだけ使います。
 func (d *Document) resolveTitle(title string, input []byte) string {
 	// 呼び出し側でタイトルが指定されている場合はそれを使用します。
 	if title != "" {

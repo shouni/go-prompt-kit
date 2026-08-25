@@ -33,7 +33,7 @@ CI (`.github/workflows/ci.yml`) runs build/vet/gofmt/race-test, golangci-lint, a
 
 ### The `htmldoc` pipeline
 
-`htmldoc/ports/interfaces.go` defines the only three abstractions; everything else is an
+`htmldoc/ports/interfaces.go` defines the only abstractions; everything else is an
 implementation or the wiring that joins them.
 
 ```
@@ -53,18 +53,49 @@ input bytes ──> Converter.Convert() ──> HTML fragment ──> Renderer.R
   *only when neither is injected*, so `WithConverter` / `WithRenderer` let a JSON pipeline go through
   the same constructor. `Document.Run(w, title, input)` writes straight to an `io.Writer` — it never
   buffers the whole document on the caller's behalf. The title resolves in this order: explicit
-  `title` argument → `Converter.ExtractTitle(input)` → the default title. `lang` and the default
+  `title` argument → the converter's extracted title → the default title. `lang` and the default
   title come from `WithLang` / `WithDefaultTitle` (defaults `"ja-jp"` and `"Document"`).
 
 `ports` stays a separate package because both the implementations (`jsondoc` asserts
 `var _ ports.Converter`) and the consumer (`htmldoc`) reference the interfaces; merging them into
 `htmldoc` would make `jsondoc` → `htmldoc` → `jsondoc` cycles possible.
 
+**`ports.TitledConverter` exists so auto-titling does not parse the input twice.** `Convert` and
+`ExtractTitle` each parse the whole input, so `Run(w, "", input)` — the documented way to let the
+title be extracted — used to do the work twice. The optional interface adds
+`ConvertWithTitle(input) (fragment, title, error)`; `Document.convert` type-asserts for it and
+falls back to `Convert` + `resolveTitle` when a converter only implements `Converter`. Both bundled
+converters implement it, and both assert `var _ ports.TitledConverter` — without the assertion a
+signature drift would silently drop `Document` back onto the two-parse path. When a title *is*
+given, neither extraction path runs at all. Measured on a ~300-paragraph document (`Document.Run`
+with an empty title, before → after): 1.05ms → 0.59ms, 13,689 → 8,360 allocs, 1.99MB → 1.11MB.
+`markdown.Converter` can do this because `goldmark.Markdown.Convert` is just
+`Parser().Parse()` + `Renderer().Render()`, so `convert` calls the two halves itself and keeps the
+AST for `firstHeadingText`. `htmldoc/titled_test.go` pins that both paths render identical output.
+
 `ExtractTitle` is on the interface for *all* converters. `markdown.Converter` parses with goldmark
 and walks the AST for the first `ast.Heading`, so fenced and indented code blocks, setext headings,
 and closing `#` sequences are all handled by the parser; `inlineText` recursively collects text from
 inline children, which strips emphasis, links, and code spans down to their text. `jsondoc.Converter`
-implements the same method by reading a configurable top-level JSON key (default `"title"`).
+implements the same method by scanning with an `encoding/json/jsontext` decoder — it walks
+top-level member names, `SkipValue()`s the rest, and stops at the configurable key (default
+`"title"`), so it never materializes the document. A side effect: a title followed by malformed
+JSON still comes back (`Convert` errors on that same input anyway).
+
+`markdown.WithCJK` turns on goldmark's `extension.CJK`, which drops a soft line break when the
+characters on both sides are East Asian wide. Without it a Japanese paragraph written across source
+lines keeps the `\n` in the HTML, and a browser renders that as a space *inside* a sentence. It is
+opt-in only to stay consistent with the other extension options (`WithTypographer`,
+`WithFootnotes`); the default `lang` being `"ja-jp"` is an argument for flipping it if the option
+shape ever changes. It affects the renderer only — `ExtractTitle` walks the AST, so a multi-line
+setext heading still gets its space either way.
+
+**`jsondoc` decodes numbers as `json.Number`, not `float64`.** Through `float64` a large integer
+renders as `1.234567890123e+12` and `0.30` becomes `0.3` — the document then shows a different
+number than the input carried, which defeats the point of a document generator. `decode` uses a
+`json.Decoder` with `UseNumber()`; because a `Decoder` (unlike `json.Unmarshal`) silently ignores
+whatever follows the first value, it then requires the next `Token()` to be `io.EOF`. Templates
+that need arithmetic must convert the `json.Number` through a registered func.
 
 ### The `frontmatter` package
 

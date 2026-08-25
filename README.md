@@ -42,7 +42,9 @@
 * **🧾 JSON to HTML**: 構造化出力を、呼び出し側が指定した `html/template` で任意の形にHTMLフラグメント化。スキーマやテンプレートはライブラリ側では関知しない汎用設計。
 * **🎨 Style-Injected Rendering**: 組み込みの CSS とテンプレートで即座に成果物を出力。差し替えも、既定を保った追記も可能。
 * **🧩 Modular Architecture**: Converter と Renderer が `ports` のインターフェース越しに分離され、片方だけ差し替え可能。
-* **🌲 AST-based Title Extraction**: 構文木からタイトルを抽出するため、コードブロック内の `#` や setext 形式も正しく判定。
+* **🌲 AST-based Title Extraction**: 構文木からタイトルを抽出するため、コードブロック内の `#` や setext 形式も正しく判定。変換とタイトル抽出は 1 回の解析で済ませます（`ports.TitledConverter`）。
+* **🇯🇵 CJK-aware Line Breaks**: `markdown.WithCJK(true)` で、日本語の段落中の改行が空白として描画されるのを防ぎます。
+* **🔢 Number Fidelity**: `jsondoc` は JSON の数値を字面のまま扱うため、桁の大きい整数が指数表記に化けません。
 
 ---
 
@@ -180,7 +182,10 @@ builder, err := prompts.NewBuilder(bodies)
 
 ```go
 doc, err := htmldoc.New(
-    htmldoc.WithConverterOptions(markdown.WithHardWraps(true)),
+    htmldoc.WithConverterOptions(
+        markdown.WithHardWraps(true),
+        markdown.WithCJK(true), // 日本語の文書ではこちらも
+    ),
 )
 if err != nil {
     return err
@@ -190,6 +195,22 @@ if err != nil {
 // 出力は io.Writer へ直接書き出されます（http.ResponseWriter やファイルにも渡せます）
 err = doc.Run(w, "", src)
 ```
+
+`markdown.WithCJK(true)` は、段落の途中の改行（ソフト改行）の扱いを東アジア言語向けに
+切り替えます。Markdown ではソフト改行が出力 HTML にもそのまま残り、ブラウザ上では
+空白として描画されます。単語を空白で区切る言語では正しい挙動ですが、日本語では
+文の途中に空白が入ります。
+
+```text
+入力:   これは日本語の文章で、
+        途中で改行しています。
+
+無効:   <p>これは日本語の文章で、\n途中で改行しています。</p>  → 「、 途中で」と表示される
+有効:   <p>これは日本語の文章で、途中で改行しています。</p>
+```
+
+取り除かれるのは改行の前後がともに全角文字である場合だけなので、英文が混ざっていても
+そちらの区切りは保たれます。
 
 ### JSON を任意のテンプレートで HTML 化する
 
@@ -223,7 +244,7 @@ go-prompt-kit/
 ├── prompts/           # 【INPUT】モード管理・partial・テンプレート実行
 ├── frontmatter/       # 【INPUT】プロンプト先頭のメタデータの切り離し（依存なし）
 ├── htmldoc/           # 【OUTPUT】ドキュメント配信（Document = 変換 + レンダリングの実行）
-│   ├── ports/         #   - 抽象インターフェース定義 (Converter/Renderer/Runner)
+│   ├── ports/         #   - 抽象インターフェース定義 (Converter/TitledConverter/Renderer/Runner)
 │   ├── markdown/      #   - Markdown→HTMLフラグメント変換・タイトル抽出
 │   ├── jsondoc/       #   - JSON→HTMLフラグメント変換（テンプレートは呼び出し側が注入）
 │   └── renderer/      #   - HTML レンダリング (CSS/Template)
@@ -237,6 +258,8 @@ go-prompt-kit/
 * 読み込み専用のオプション（`WithPrefix` / `WithRecursive` / `WithExtensions` / `WithFrontMatter`）を `NewBuilder` に渡すと `ErrLoadOnlyOption` になります。黙って無視すると、絞り込んだつもりのまま全ファイルが登録されるためです。
 * `htmldoc.Document` は入力形式に関知しません。Markdown か JSON かは注入する `ports.Converter` が決めます。
 * `ports.Converter.ExtractTitle` は形式非依存です。`jsondoc.Converter` はこれを「トップレベルの `title` キーの取得」として実装しています（キーは `jsondoc.WithTitleKey` で変更可能）。
+* タイトルを自動抽出する場合、`Convert` と `ExtractTitle` をそれぞれ呼ぶと同じ入力を2回解析することになります。これを避けるためのオプショナルなインターフェースが `ports.TitledConverter`（`ConvertWithTitle`）で、同梱の 2 つの Converter はどちらも実装しています。`Document` は実装していればそちらを優先し、していなければ従来どおり動きます。自作の Converter で 1 回の解析にまとめられる場合は実装してください。
+* `jsondoc` は JSON の数値を `json.Number`（入力に書かれた字面のままの文字列）としてテンプレートへ渡します。`float64` を経由すると桁の大きい整数が `1.234567890123e+12` という指数表記になり、`0.30` も `0.3` に丸められて、文書に載る数が入力と食い違うためです。テンプレート側で数値として比較・計算する場合は、変換用の関数を `Funcs` で登録してください。
 * `markdown.WithUnsafeHTML(true)` は Markdown 中の生 HTML をそのまま出力します。信頼できない入力に対しては有効化しないでください。同様に `renderer.WithCSS` の内容もエスケープされずに `<style>` へ挿入されます。
 
 ---
