@@ -116,7 +116,7 @@ or the YAML lands at the top of the instruction sent to the model.
   disables front matter detection — that is the failure this normalization exists to prevent.
 
 **The package does not parse the metadata, and takes no dependency to do so.** `Decode` /
-`DecodeMap` accept an `UnmarshalFunc func(data []byte, v any) error`, which `yaml.Unmarshal` and
+`DecodeAs` / `DecodeMap` accept an `UnmarshalFunc func(data []byte, v any) error`, which `yaml.Unmarshal` and
 `json.Unmarshal` both satisfy as-is. This is deliberate: consumers pick and migrate their own YAML
 library (`gopkg.in/yaml.v3` has been frozen at v3.0.1 since 2022 and its upstream repo was archived
 in April 2025; the maintained successor is `go.yaml.in/yaml/v3`). If this module hard-depended on
@@ -124,6 +124,10 @@ one, every swap would need a release here plus a bump in each consumer, and mid-
 binary would link two YAML parsers deciding the same front matter. A `Parser` type holding the
 function is not an option either — Go methods cannot have type parameters, so `DecodeMap[T]` has to
 be a package-level function.
+
+`DecodeAs[T]` is the single-value form of `DecodeMap[T]` — `Decode` with the result returned
+instead of filled in through a pointer. It returns `T`'s zero value on error, never a
+partially-filled value.
 
 `DecodeMap` walks keys in sorted order so that, with several malformed entries, the reported key
 does not change between runs. Entries with no front matter keep their key and get `T`'s zero value.
@@ -148,9 +152,26 @@ out, _     := builder.Build("summarize", data)
 - Because the namespace is shared, two entries that `{{define}}` the same name would silently overwrite each other (last writer wins). `parseEntry` parses each entry **in isolation** to learn exactly which names it defines and rejects cross-entry duplicates with `ErrDuplicateDefinition`; isolation matters because scanning the shared root cannot distinguish "this entry defined it" from "an earlier entry defined it". `attach` then moves those parse trees into the root with `AddParseTree`, so **each entry is parsed once**. Re-parsing into the root was not just wasted work — it made the error branch there unreachable, since the isolated parse hits the same syntax error first. A `{{template "x"}}` *reference* produces a tree-less entry, which both functions skip: it never trips the duplicate check and never clobbers a real definition in the root.
 - Entries whose name's last path element starts with `DefaultPartialPrefix` (`_`) are **partials**: registered for reference but excluded from `Modes()` and rejected by `Build`. A map containing only partials is an error. `WithPartialPrefix` changes the prefix; passing `""` disables partial detection entirely so every entry becomes a mode. The predicate is exported as `IsPartial(name, prefix)` so callers filtering a raw map do not re-implement it — a consumer's own copy tested the whole key instead of `path.Base`, which would have diverged the moment it used `WithRecursive`.
 - `WithDefaultMode` makes `Build` fall back to a named mode for any unregistered mode, including `""`. The default mode must itself be a registered non-partial mode or `NewBuilder` fails — this catches typos at construction. `Has` deliberately ignores the fallback and reports actual registration.
+- **`Fields(mode)` (`prompts/fields.go`) is the static counterpart to `missingkey=error`**: it
+  expands the mode with the same `expandTemplate` walk `Expand` uses (so partials are followed, and
+  cyclic / dot-rebinding references fail the same way), then collects `FieldNode`s into sorted
+  `"User.Name"` paths. The hard part is *where dot points*: `if` bodies keep dot so they are walked;
+  `range`/`with` bodies rebind it, so a `.Title` in there cannot be reported as a position in the
+  caller's data and is skipped — but the branch's own pipe (`.Items`), its `else` list (dot is
+  unchanged when the value is empty), and any `$`-rooted reference anywhere inside are reported.
+  That makes the result sound but not complete, which the doc comment states outright. A
+  parenthesized `{{(.User).Name}}` is composed back into `User.Name` via `chainBase`; `concat`
+  copies rather than `append`s because the identifier slice belongs to the parse tree.
 - `Expand` (`prompts/expand.go`) is the counterpart to `Build`: it returns the mode's **source** with partials inlined but `{{.Field}}` actions left untouched, so callers can show or inspect a prompt without having data. It walks the `text/template/parse` tree and splices referenced templates into `TemplateNode` positions, descending into `if`/`range`/`with` bodies. It never mutates the stored trees — branch nodes are value-copied and a fresh `ListNode` is built — because `Build` keeps using them. A reference that changes the data context (`{{template "x" .Foo}}`) is rejected with `ErrNotExpandable` rather than silently rebinding `.`; cycles give `ErrCyclicTemplate`.
 - `newBuilder` sets `Option("missingkey=error")` on the root (the option lives in the shared `common` struct, so it applies to every associated template). A template referencing a field absent from the data fails at `Build` time rather than emitting `<no value>`. `WithFuncs` registers custom template functions before parsing; they are available to modes and partials alike.
 - **`Builder` is immutable after construction and safe for concurrent use.** Four consumers call `Build` from HTTP handlers. `prompts/concurrent_test.go` pins that guarantee — it is why `Modes` clones and `FrontMatters` returns a copy — and only means anything under `-race`.
+- **`Builder` is immutable after construction** — this now also covers `Fields`, which builds fresh
+  parse trees the way `Expand` does rather than touching the stored ones; `prompts/concurrent_test.go`
+  exercises both.
+
+  A streaming `BuildTo(w, mode, data)` was written and then removed before release: none of the six
+  consumers wants one (each takes `Build`'s string straight to an AI client), and this package has
+  already carried dead API once — see `LoadFS` above. Add it when a call site actually needs it.
 - Sentinel errors: `prompts.ErrUnknownMode`, `prompts.ErrEmptyTemplates`, `prompts.ErrDuplicateDefinition`, `prompts.ErrLoadOnlyOption`, `prompts.ErrCyclicTemplate`, `prompts.ErrNotExpandable`, `frontmatter.ErrNoUnmarshalFunc`, `resource.ErrNotDirectory`. The first two keep their pre-sentinel message text because consumer tests match on it.
 
 ## Conventions

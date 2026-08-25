@@ -40,6 +40,23 @@ func Decode(front string, v any, unmarshal UnmarshalFunc) error {
 	return nil
 }
 
+// DecodeAs は、Split が返した front matter を T として読み取って返します。
+// 受け取る変数を先に用意しなくてよいだけで、Decode と同じ働きをします
+// （DecodeMap の単数版です）。
+//
+//	info, err := frontmatter.DecodeAs[ModeInfo](front, yaml.Unmarshal)
+//
+// front matter が空の場合は T のゼロ値を返します。エラーではありません。
+func DecodeAs[T any](front string, unmarshal UnmarshalFunc) (T, error) {
+	var v T
+	if err := Decode(front, &v, unmarshal); err != nil {
+		var zero T
+		return zero, err
+	}
+
+	return v, nil
+}
+
 // DecodeMap は、SplitMap が返した front matter をまとめて T へ読み取ります。
 // キーの集合は入力と同じで、front matter を持たないエントリは T のゼロ値になります。
 //

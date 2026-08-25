@@ -76,6 +76,48 @@ func TestDecode(t *testing.T) {
 	})
 }
 
+func TestDecodeAs(t *testing.T) {
+	t.Run("front matter を T として返す", func(t *testing.T) {
+		got, err := frontmatter.DecodeAs[modeInfo](`{"direction":"技術解説"}`, json.Unmarshal)
+
+		require.NoError(t, err)
+		assert.Equal(t, modeInfo{Direction: "技術解説"}, got)
+	})
+
+	t.Run("空の front matter はゼロ値を返す", func(t *testing.T) {
+		got, err := frontmatter.DecodeAs[modeInfo]("", json.Unmarshal)
+
+		require.NoError(t, err)
+		assert.Zero(t, got)
+	})
+
+	t.Run("解析に失敗した場合はゼロ値とエラーを返す", func(t *testing.T) {
+		got, err := frontmatter.DecodeAs[modeInfo](`{"direction":`, json.Unmarshal)
+
+		require.Error(t, err)
+		assert.Zero(t, got, "失敗した場合に途中まで読んだ値を返しています")
+	})
+
+	t.Run("解析関数が無い場合はエラーを返す", func(t *testing.T) {
+		got, err := frontmatter.DecodeAs[modeInfo](`{"direction":"技術解説"}`, nil)
+
+		assert.ErrorIs(t, err, frontmatter.ErrNoUnmarshalFunc)
+		assert.Zero(t, got)
+	})
+
+	t.Run("Decode と同じ結果になる", func(t *testing.T) {
+		const front = `{"direction":"技術解説","sections":["a","b"]}`
+
+		var want modeInfo
+		require.NoError(t, frontmatter.Decode(front, &want, json.Unmarshal))
+
+		got, err := frontmatter.DecodeAs[modeInfo](front, json.Unmarshal)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+}
+
 func TestDecodeMap(t *testing.T) {
 	t.Run("キーごとに読み取る", func(t *testing.T) {
 		fronts := map[string]string{

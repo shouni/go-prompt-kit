@@ -71,6 +71,11 @@ func TestBuilder_ConcurrentReaders(t *testing.T) {
 			expanded, err := b.Expand("greet")
 			assert.NoError(t, err)
 			assert.Equal(t, "こんにちは", expanded)
+
+			// Expand と同じく構文木を辿るため、木を書き換えていないことに意味があります。
+			fields, err := b.Fields("greet")
+			assert.NoError(t, err)
+			assert.Empty(t, fields)
 		})
 	}
 	wg.Wait()

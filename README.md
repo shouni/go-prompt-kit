@@ -26,6 +26,7 @@
 * **🔧 Custom Functions**: 独自のテンプレート関数を登録し、本文と partial の双方から利用。
 * **🎯 Default Mode**: モード未指定・未知のモードのフォールバック先を指定。
 * **🔍 Expand**: データなしで partial 展開済みの本文を取得。カタログ表示や本文の検査に。
+* **🧾 Fields**: モードが要求するフィールドをデータなしで列挙。`missingkey=error` の対。
 * **📝 Front Matter**: `WithFrontMatter` を付けるだけで、切り離しから `Builder` への登録までを一度の読み込みで完了。
 * **🔒 Concurrency-Safe**: 構築後の `Builder` は不変。起動時に一度作って HTTP ハンドラから並行に使えます。
 * **🛡 Collision Detection**: 名前の衝突・空ファイル・定義の重複を初期化時に検知。
@@ -33,7 +34,7 @@
 ### 📝 [frontmatter] プロンプト先頭のメタデータ
 
 * **✂️ Split**: `---` で挟んだメタデータを本文から切り離す処理そのもの。`prompts` を介さず単体でも使えます。
-* **🔌 Pluggable Decode**: YAML ライブラリを固定せず、`yaml.Unmarshal` などを `UnmarshalFunc` として受け取る設計。**このパッケージの依存は標準ライブラリのみ**。
+* **🔌 Pluggable Decode**: YAML ライブラリを固定せず、`yaml.Unmarshal` などを `UnmarshalFunc` として受け取る設計。**このパッケージの依存は標準ライブラリのみ**。`Decode` / `DecodeAs[T]` / `DecodeMap[T]` の3つ。
 * **👀 Invisible Diff Normalization**: BOM と CRLF を判定前に揃えるため、「front matter を書いたのに認識されない」が起きません。
 
 ### 📡 [htmldoc] ドキュメント配信エンジン
@@ -166,6 +167,13 @@ bodies, fronts := frontmatter.SplitMap(files)
 builder, err := prompts.NewBuilder(bodies)
 ```
 
+単体の front matter は `Decode`（受け取る変数を先に用意する）か `DecodeAs[T]`
+（戻り値で受け取る）で読み取ります。`DecodeMap[T]` はその一括版です。
+
+```go
+info, err := frontmatter.DecodeAs[ModeInfo](builder.FrontMatter("summarize"), yaml.Unmarshal)
+```
+
 **メタデータの書式はこのパッケージでは解釈しません。** `UnmarshalFunc` は
 `func(data []byte, v any) error` なので、`yaml.Unmarshal` も `json.Unmarshal` も
 そのまま渡せます。YAML ライブラリを固定しないのは、その選択と乗り換えを利用側の
@@ -177,6 +185,23 @@ builder, err := prompts.NewBuilder(bodies)
 * 区切りとみなすのは `---` **だけ**からなる行です。`----` のように文字数が違う行は区切りではありません。
 * 取り除くのは区切り行とその行末の改行だけなので、区切りの直後の空行は本文に残ります。
 * 戻り値は front matter の有無にかかわらず、改行を LF へ揃え先頭の BOM を取り除いたものです。どちらもエディタ上で見えないまま判定を外すため、判定の前に揃えます。
+
+### モードが要求するフィールドを先に知る
+
+`Build` は `missingkey=error` を設定しているため、data に無いフィールドを参照した時点で
+エラーになります。`Fields` はその手前で「このモードが何を要求しているか」をデータなしで
+確かめるための対になる関数です。
+
+```go
+fields, err := builder.Fields("summarize")
+// ["Language", "Source.Title"]
+```
+
+参照する partial の中身も辿ります。ただし **`range` と `with` の本体は列挙しません** —
+その内側では `.` が別の値を指すため、フィールド名を data からの位置として報告できないからです
+（`{{range .Items}}` の `.Items` 自体、`else` 節、`{{$.Language}}` のような `$` 起点の参照は
+位置が確定するので含まれます）。列挙されたものは確かに要求されていますが、列挙されなかった
+ものが不要とは限りません。
 
 ### Markdown を HTML ドキュメントへ変換する
 
