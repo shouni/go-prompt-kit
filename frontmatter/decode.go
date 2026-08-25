@@ -9,7 +9,7 @@ import (
 )
 
 // ErrNoUnmarshalFunc は、解析関数が渡されなかった場合に返されます。
-var ErrNoUnmarshalFunc = errors.New("front matter の解析関数が指定されていません")
+var ErrNoUnmarshalFunc = errors.New("frontmatter: no unmarshal function configured")
 
 // UnmarshalFunc は、front matter を構造体へ読み取る関数です。
 // yaml.Unmarshal や json.Unmarshal をそのまま渡せます。

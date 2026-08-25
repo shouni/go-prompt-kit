@@ -124,6 +124,7 @@ out, _     := builder.Build("summarize", data)
 
 ## Conventions
 
+- **Error text**: sentinel errors are English with a package prefix (`review: diff is empty`) so a deeply wrapped error still names its origin; the context added by `fmt.Errorf` wrapping is Japanese. Existing English wrap text is not being retrofitted — apply the rule to code you touch.
 - All doc comments, error messages, and log output are in **Japanese**, in `です／ます` style.
 - Options use the functional-option pattern: an `options.go` per package exporting `WithXxx()` returning `Option func(*config)`, applied into an unexported `config` struct that the constructor consumes. Constructors take `opts ...Option` so adding options stays backward compatible.
 - Tests are table-driven with `github.com/stretchr/testify` (`assert` / `require`) and named `TestType_Method`.

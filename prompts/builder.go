@@ -20,20 +20,20 @@ const DefaultPartialPrefix = "_"
 
 var (
 	// ErrEmptyTemplates は、NewBuilder に空またはnilのマップが渡された場合に返されます。
-	ErrEmptyTemplates = errors.New("テンプレートマップが空またはnilです")
+	ErrEmptyTemplates = errors.New("prompts: template map is empty or nil")
 
 	// ErrUnknownMode は、登録されていないモードで Build が呼ばれた場合に返されます。
-	ErrUnknownMode = errors.New("不明なモードです")
+	ErrUnknownMode = errors.New("prompts: unknown mode")
 
 	// ErrDuplicateDefinition は、複数のエントリが同じ名前のテンプレートを
 	// {{define}} で定義している場合に返されます。
 	// 全テンプレートは1つの名前空間を共有するため、放置すると後勝ちで静かに上書きされます。
-	ErrDuplicateDefinition = errors.New("テンプレート定義が重複しています")
+	ErrDuplicateDefinition = errors.New("prompts: duplicate template definition")
 
 	// ErrLoadOnlyOption は、読み込み時のみ有効なオプションが NewBuilder に
 	// 渡された場合に返されます。黙って無視すると、指定したつもりの絞り込みが
 	// 効いていないことに気付けないためです。
-	ErrLoadOnlyOption = errors.New("LoadFS でのみ有効なオプションです")
+	ErrLoadOnlyOption = errors.New("prompts: option is only valid with LoadFS")
 )
 
 // Builder は、読み込み済みのテンプレート一式とモード選択の規則を保持します。
