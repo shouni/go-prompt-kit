@@ -49,7 +49,7 @@ func TestConverter_WithCJK(t *testing.T) {
 
 // TestConverter_WithCJK_TitleUnaffected は、CJK拡張がタイトル抽出へ影響しないことを
 // 確認します。CJK拡張が変えるのはレンダラーの改行の扱いだけで、タイトルは構文木から
-// 収集するため、複数行にまたがる見出しの語の区切りはこれまでどおり空白のまま残ります。
+// 収集するため、複数行にまたがる見出しの語の区切りは拡張の有無にかかわらず空白のまま残ります。
 func TestConverter_WithCJK_TitleUnaffected(t *testing.T) {
 	c := New(WithCJK(true))
 

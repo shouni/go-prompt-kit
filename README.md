@@ -140,6 +140,20 @@ text, err := builder.Expand("review")
 `ErrCyclicTemplate` として検出されます。データの起点が変わる
 `{{template "x" .Foo}}` は展開できないため `ErrNotExpandable` を返します。
 
+`Fields` は同じ構文木から、本文が data に対して参照するフィールドを名前順で返します。
+`Build` は `missingkey=error` を設定しているため data に無いフィールドは必ずエラーになりますが、
+その手前で要求を確かめられます。
+
+```go
+fields, err := builder.Fields("review")
+// ["Language", "Target"]
+```
+
+ただし `range` と `with` の本体は列挙しません。その内側では `.` が別の値を指すため、
+フィールド名を data からの位置として報告できないからです（`{{range .Items}}` の `.Items` 自体、
+`else` 節、`{{$.Language}}` のような `$` 起点の参照は位置が確定するので含まれます）。
+列挙されたものは確かに要求されていますが、列挙されなかったものが不要とは限りません。
+
 ### プロンプト先頭のメタデータ（front matter）を切り離す
 
 モードの説明をプロンプト自身に持たせると、モードを足す作業がファイルを1つ置くだけで
@@ -185,23 +199,6 @@ info, err := frontmatter.DecodeAs[ModeInfo](builder.FrontMatter("summarize"), ya
 * 区切りとみなすのは `---` **だけ**からなる行です。`----` のように文字数が違う行は区切りではありません。
 * 取り除くのは区切り行とその行末の改行だけなので、区切りの直後の空行は本文に残ります。
 * 戻り値は front matter の有無にかかわらず、改行を LF へ揃え先頭の BOM を取り除いたものです。どちらもエディタ上で見えないまま判定を外すため、判定の前に揃えます。
-
-### モードが要求するフィールドを先に知る
-
-`Build` は `missingkey=error` を設定しているため、data に無いフィールドを参照した時点で
-エラーになります。`Fields` はその手前で「このモードが何を要求しているか」をデータなしで
-確かめるための対になる関数です。
-
-```go
-fields, err := builder.Fields("summarize")
-// ["Language", "Source.Title"]
-```
-
-参照する partial の中身も辿ります。ただし **`range` と `with` の本体は列挙しません** —
-その内側では `.` が別の値を指すため、フィールド名を data からの位置として報告できないからです
-（`{{range .Items}}` の `.Items` 自体、`else` 節、`{{$.Language}}` のような `$` 起点の参照は
-位置が確定するので含まれます）。列挙されたものは確かに要求されていますが、列挙されなかった
-ものが不要とは限りません。
 
 ### Markdown を HTML ドキュメントへ変換する
 
@@ -291,13 +288,15 @@ go-prompt-kit/
 
 ## 🤝 依存関係 (Dependencies)
 
-外部モジュールへの直接依存は **1 つだけ**です。
+本体のコードが参照する外部モジュールは **1 つだけ**です。
 
 * [`github.com/yuin/goldmark`](https://github.com/yuin/goldmark): Markdown 解析・HTML 変換（`htmldoc/markdown` のみが使用）
+* [`stretchr/testify`](https://github.com/stretchr/testify): テストのみ
 
-`prompts` / `resource` / `frontmatter` は標準ライブラリ（`text/template` / `io/fs` / `embed`）だけで動きます。
-とくに `frontmatter` が YAML ライブラリを持たないのは意図的な設計です（上記参照）。
-テストのみ [`stretchr/testify`](https://github.com/stretchr/testify) を使用します。
+`prompts` / `resource` / `frontmatter` は標準ライブラリ（`text/template` / `io/fs` / `embed`）だけで、
+`htmldoc/jsondoc` も `encoding/json` と `encoding/json/jsontext` だけで動きます。
+`frontmatter` が YAML ライブラリを持たず `UnmarshalFunc` を受け取るのは、
+その選択と乗り換えを利用側のペースで行えるようにするためです（front matter の節を参照）。
 
 ---
 

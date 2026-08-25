@@ -9,7 +9,7 @@ type config struct {
 	prefix     string
 }
 
-// newConfig は既定値を適用したうえでオプションを反映します。
+// newConfig は、オプションを反映した設定を返します。
 func newConfig(opts ...Option) *config {
 	cfg := &config{}
 	for _, opt := range opts {

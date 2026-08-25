@@ -24,7 +24,7 @@ go test ./htmldoc/markdown -run TestConverter_ExtractTitle -v
 
 go vet ./...
 test -z "$(gofmt -l .)"                   # CI fails on any unformatted file
-golangci-lint run                         # config in .golangci.yml; CI pins v2.12.2
+golangci-lint run                         # config in .golangci.yml; CI pins v2.13.1
 ```
 
 CI (`.github/workflows/ci.yml`) runs build/vet/gofmt/race-test, golangci-lint, and govulncheck on pushes and PRs to `main` and `develop`. Current work happens on `develop`.
@@ -33,7 +33,7 @@ CI (`.github/workflows/ci.yml`) runs build/vet/gofmt/race-test, golangci-lint, a
 
 ### The `htmldoc` pipeline
 
-`htmldoc/ports/interfaces.go` defines the only abstractions; everything else is an
+`htmldoc/ports/interfaces.go` holds every abstraction in the pipeline; everything else is an
 implementation or the wiring that joins them.
 
 ```
@@ -145,7 +145,7 @@ out, _     := builder.Build("summarize", data)
 ```
 
 - `resource.Load(fsys, rootDir, opts...)` derives the *mode name* from the filename by stripping the extension, and returns an error on mode-name collision. It is non-recursive by default; `WithRecursive` walks subdirectories and makes the mode name the `/`-joined path relative to `rootDir` (`prompts/en/rock.md` → `en/rock`). `WithExtensions` filters by extension. `WithPrefix` limits loading to files with that prefix and strips it from the mode name — it is an option rather than a positional parameter because every real call site passed `""`.
-- **`LoadFS` is the entry point; prefer it over hand-wiring.** It used to be dead API — all five consumers called `resource.Load` + `NewBuilder` separately, because each needs a per-entry transform between the two (front matter, or a metadata comment). `WithFrontMatter` closes that gap: `LoadFS` splits each entry with `frontmatter.SplitMap`, registers only the body, and keeps the raw front matter behind `Builder.FrontMatter(name)` / `FrontMatters()`. The manual `resource.Load` + `frontmatter.SplitMap` + `NewBuilder` path stays available for callers that need the intermediate maps.
+- **`LoadFS` is the entry point; prefer it over hand-wiring.** It used to be dead API — all six consumers called `resource.Load` + `NewBuilder` separately, because each needs a per-entry transform between the two (front matter, or a metadata comment). `WithFrontMatter` closes that gap: `LoadFS` splits each entry with `frontmatter.SplitMap`, registers only the body, and keeps the raw front matter behind `Builder.FrontMatter(name)` / `FrontMatters()`. The manual `resource.Load` + `frontmatter.SplitMap` + `NewBuilder` path stays available for callers that need the intermediate maps.
 - **Load-only options are rejected by `NewBuilder`.** `WithPrefix` / `WithRecursive` / `WithExtensions` / `WithFrontMatter` only mean something while reading files, and used to be silently ignored here. They now record their name in `config.loadOnly`, and `NewBuilder` fails with `ErrLoadOnlyOption` listing them. `LoadFS` consumes them itself and calls the unexported `newBuilder`, bypassing the check.
 - **A partial keeps its trailing newline unless `WithTrimPartials` is set.** Files end with a newline, so a partial referenced *mid-body* inserts a blank line at that point — which in Markdown is a paragraph break. Referenced at the end of a body it makes no visible difference, so the mismatch surfaces only wherever a consumer happens to place one mid-body — which is usually a small minority of the references, and easy to miss without a golden of the rendered output. Trimming is opt-in rather than the default because the default would change what every existing caller renders. The trim runs after the empty-content check, so a newline-only partial still registers as a partial that outputs nothing.
 - **All templates share one namespace.** Every entry is registered as an associated template on a single root, so a mode body can pull in another entry with `{{template "_name" .}}` — including a data argument, since expansion is native `text/template`, not string substitution.
@@ -164,7 +164,7 @@ out, _     := builder.Build("summarize", data)
   copies rather than `append`s because the identifier slice belongs to the parse tree.
 - `Expand` (`prompts/expand.go`) is the counterpart to `Build`: it returns the mode's **source** with partials inlined but `{{.Field}}` actions left untouched, so callers can show or inspect a prompt without having data. It walks the `text/template/parse` tree and splices referenced templates into `TemplateNode` positions, descending into `if`/`range`/`with` bodies. It never mutates the stored trees — branch nodes are value-copied and a fresh `ListNode` is built — because `Build` keeps using them. A reference that changes the data context (`{{template "x" .Foo}}`) is rejected with `ErrNotExpandable` rather than silently rebinding `.`; cycles give `ErrCyclicTemplate`.
 - `newBuilder` sets `Option("missingkey=error")` on the root (the option lives in the shared `common` struct, so it applies to every associated template). A template referencing a field absent from the data fails at `Build` time rather than emitting `<no value>`. `WithFuncs` registers custom template functions before parsing; they are available to modes and partials alike.
-- **`Builder` is immutable after construction and safe for concurrent use.** Four consumers call `Build` from HTTP handlers. `prompts/concurrent_test.go` pins that guarantee — it is why `Modes` clones and `FrontMatters` returns a copy — and only means anything under `-race`.
+- **`Builder` is immutable after construction and safe for concurrent use.** All six consumers call `Build`, and every one of them serves HTTP. `prompts/concurrent_test.go` pins that guarantee — it is why `Modes` clones and `FrontMatters` returns a copy — and only means anything under `-race`.
 - **`Builder` is immutable after construction** — this now also covers `Fields`, which builds fresh
   parse trees the way `Expand` does rather than touching the stored ones; `prompts/concurrent_test.go`
   exercises both.
@@ -203,14 +203,20 @@ a temporary workspace:
 
 ```bash
 cat > /tmp/gpk.work <<'EOF'
-go 1.26.6
+go 1.27
 use (
 	/Users/kensukeshouni/GolandProjects/go-prompt-kit
 	/Users/kensukeshouni/GolandProjects/ap-story
+	/Users/kensukeshouni/GolandProjects/ap-voice
+	/Users/kensukeshouni/GolandProjects/ap-comp
+	/Users/kensukeshouni/GolandProjects/ap-mv
+	/Users/kensukeshouni/GolandProjects/adk-review
+	/Users/kensukeshouni/GolandProjects/ap-mcp
 )
 EOF
 cd /Users/kensukeshouni/GolandProjects/ap-story && GOWORK=/tmp/gpk.work go test ./...
 ```
 
-Add the other consumers to the `use` block to cover them in one run. The `go` directive has to be
-at least as new as every module listed, or the workspace is rejected before anything builds.
+That `use` block is every consumer; drop the ones you do not need. The `go` directive has to be
+at least as new as every module listed, or the workspace is rejected before anything builds
+(all seven are on `go 1.27`). `-mod` cannot be set in workspace mode — leave `GOFLAGS` alone.

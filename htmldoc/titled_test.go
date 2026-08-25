@@ -70,7 +70,7 @@ func TestDocument_Run_TitleGivenSkipsExtraction(t *testing.T) {
 }
 
 // TestDocument_Run_FallsBackToConverter は、ports.Converter だけを実装した
-// Converter でもこれまでどおり動くことを確認します。
+// Converter でも Convert と ExtractTitle の経路で動くことを確認します。
 func TestDocument_Run_FallsBackToConverter(t *testing.T) {
 	c := &countingConverter{}
 	doc, err := htmldoc.New(htmldoc.WithConverter(c))

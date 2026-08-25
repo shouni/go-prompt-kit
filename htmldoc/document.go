@@ -98,8 +98,8 @@ func (d *Document) Run(writer io.Writer, title string, input []byte) error {
 // convert は、HTMLフラグメントと確定したタイトルを返します。
 //
 // タイトルの指定がなく Converter が ports.TitledConverter を実装している場合は、
-// 変換と抽出をまとめて依頼します。そうしないと Convert と ExtractTitle が
-// 同じ入力をそれぞれ解析することになり、入力を2回解析します。
+// 変換と抽出をまとめて依頼します。Convert と ExtractTitle をそれぞれ呼ぶと、
+// 同じ入力を2回解析することになるためです。
 func (d *Document) convert(input []byte, title string) (fragment []byte, resolved string, err error) {
 	titled, ok := d.converter.(ports.TitledConverter)
 	if title != "" || !ok {
@@ -123,15 +123,13 @@ func (d *Document) convert(input []byte, title string) (fragment []byte, resolve
 }
 
 // resolveTitle は、呼び出し側の指定・入力からの抽出・既定値の順にタイトルを決定します。
-// 入力からの抽出が要らない場合に無駄な解析をしないよう、Converter が
-// ports.TitledConverter を実装していない場合の経路でだけ使います。
+// ports.TitledConverter を実装していない Converter 向けの経路です
+// （実装していれば convert がまとめて解決するため、ここは通りません）。
 func (d *Document) resolveTitle(title string, input []byte) string {
-	// 呼び出し側でタイトルが指定されている場合はそれを使用します。
 	if title != "" {
 		return title
 	}
 
-	// 指定がない場合は入力コンテンツから抽出します。
 	if extracted := d.converter.ExtractTitle(input); extracted != "" {
 		return extracted
 	}

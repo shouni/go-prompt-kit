@@ -10,10 +10,11 @@ import (
 // Renderer は、HTMLフラグメントを完全なHTMLドキュメントへ組み立てる実装です。
 type Renderer struct {
 	tpl *template.Template
-	css template.CSS // CSSをキャッシュしてパフォーマンスを向上させます
+	css template.CSS
 }
 
-// New は、アセットを事前にロードしてインスタンスを生成します。
+// New は Renderer を構築します。
+// テンプレートとスタイルシートは構築時に一度だけ読み込み、以降の Render では読み直しません。
 // オプションを指定しない場合は、埋め込みの template.html と default.css を使用します。
 func New(opts ...Option) (*Renderer, error) {
 	cfg := &config{}
@@ -24,7 +25,6 @@ func New(opts ...Option) (*Renderer, error) {
 		return nil, cfg.err
 	}
 
-	// テンプレートのパース（未指定なら埋め込みアセット）
 	tpl := cfg.tpl
 	if tpl == nil {
 		parsed, err := template.ParseFS(assets, "template.html")
@@ -34,7 +34,6 @@ func New(opts ...Option) (*Renderer, error) {
 		tpl = parsed
 	}
 
-	// CSSの事前読み込み（キャッシュ化）
 	base := ""
 	if cfg.css != nil {
 		base = string(*cfg.css)
@@ -68,7 +67,12 @@ func joinCSS(base string, extra []string) string {
 	return strings.Join(parts, "\n")
 }
 
-// Render は Renderer 用の実装です。
+// Render は、HTMLフラグメントをテンプレートへ埋め込み、完全なHTMLドキュメントとして
+// writer へ書き出します。
+//
+// bodyHTML と構築時のスタイルシートはエスケープせずに埋め込むため、
+// 信頼できる Converter の出力だけを渡してください。
+// テンプレートの実行が途中で失敗した場合、writer にはそこまでの出力が残ります。
 func (r *Renderer) Render(writer io.Writer, bodyHTML []byte, lang, title string) error {
 	data := TemplateData{
 		Lang:    lang,
