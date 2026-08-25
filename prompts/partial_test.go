@@ -165,8 +165,8 @@ func TestNewBuilder_SentinelErrors(t *testing.T) {
 
 		_, err = b.Build("unknown", nil)
 		assert.ErrorIs(t, err, ErrUnknownMode)
-		// 既存の呼び出し元が文字列で判定している場合に備え、メッセージも維持する
-		assert.Contains(t, err.Error(), "不明なモードです: 'unknown'")
+		// どのモードが無かったのかを文面に残す（番兵だけでは特定できないため）
+		assert.Contains(t, err.Error(), "'unknown'")
 	})
 
 	t.Run("空の内容はエラー", func(t *testing.T) {

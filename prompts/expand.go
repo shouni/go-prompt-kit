@@ -8,11 +8,11 @@ import (
 
 var (
 	// ErrCyclicTemplate は、partial が循環参照している場合に返されます。
-	ErrCyclicTemplate = errors.New("テンプレートが循環参照しています")
+	ErrCyclicTemplate = errors.New("prompts: template reference is cyclic")
 
 	// ErrNotExpandable は、引数付きの {{template "x" .Foo}} のように
 	// 展開するとデータコンテキストが変わってしまう参照があった場合に返されます。
-	ErrNotExpandable = errors.New("この参照は展開できません")
+	ErrNotExpandable = errors.New("prompts: reference is not expandable")
 )
 
 // Expand は、指定されたモードの本文を、参照している partial を再帰的に

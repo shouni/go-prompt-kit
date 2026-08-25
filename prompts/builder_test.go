@@ -48,8 +48,7 @@ func TestTemplateBuilder_Build(t *testing.T) {
 
 	t.Run("Error_UnknownMode", func(t *testing.T) {
 		_, err := builder.Build("non_existent_mode", struct{}{})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "不明なモードです")
+		assert.ErrorIs(t, err, ErrUnknownMode)
 	})
 
 	t.Run("Error_TemplateExecutionFailure", func(t *testing.T) {
@@ -75,11 +74,9 @@ func TestNewBuilder_Validation(t *testing.T) {
 
 	t.Run("Error_NilOrEmptyTemplates", func(t *testing.T) {
 		_, errNil := NewBuilder(nil)
-		assert.Error(t, errNil)
-		assert.Contains(t, errNil.Error(), "テンプレートマップが空またはnilです")
+		assert.ErrorIs(t, errNil, ErrEmptyTemplates)
 
 		_, errEmpty := NewBuilder(map[string]string{})
-		assert.Error(t, errEmpty)
-		assert.Contains(t, errEmpty.Error(), "テンプレートマップが空またはnilです")
+		assert.ErrorIs(t, errEmpty, ErrEmptyTemplates)
 	})
 }

@@ -14,7 +14,7 @@ import (
 )
 
 // ErrNotDirectory は、rootDir にディレクトリ以外が指定された場合に返されます。
-var ErrNotDirectory = errors.New("ディレクトリではありません")
+var ErrNotDirectory = errors.New("resource: not a directory")
 
 // Load は指定されたファイルシステム内のディレクトリからファイルを読み込み、
 // モード名（既定では拡張子を除いたファイル名）をキーとするマップとして返します。
