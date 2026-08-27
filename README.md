@@ -255,6 +255,32 @@ if err != nil {
 err = doc.Run(w, "", reviewJSON)
 ```
 
+### ドキュメントの外枠を差し替える
+
+CSS だけでなく、`<html>` から `</html>` までの外枠そのものを `renderer.WithTemplate` /
+`renderer.WithTemplateText` で置き換えられます。テンプレートが受け取れるのは次の 4 つだけです
+（既定の外枠と同じ形です）。
+
+| フィールド | 型 | 中身 |
+| --- | --- | --- |
+| `.Lang` | `string` | `<html lang>` の値（`htmldoc.WithLang`、既定 `"ja-jp"`） |
+| `.Title` | `string` | `<title>` の値。空なら Converter が本文から拾ったもの |
+| `.Style` | `template.CSS` | `<style>` の中身。**エスケープされません** |
+| `.Content` | `template.HTML` | 本文の HTML フラグメント。**エスケープされません** |
+
+```go
+doc, err := htmldoc.New(
+    htmldoc.WithRendererOptions(renderer.WithTemplateText(`
+<!DOCTYPE html>
+<html lang="{{.Lang}}"><head><title>{{.Title}}</title><style>{{.Style}}</style></head>
+<body class="report">{{.Content}}</body></html>`)),
+)
+```
+
+`.Style` と `.Content` がエスケープされないのは、CSS とフラグメントを
+そのまま埋め込むためです。どちらも信頼できる入力である前提で、利用者の入力を
+直接流し込む場所ではありません。
+
 ---
 
 ## 🏗 プロジェクトレイアウト (Project Layout)
@@ -282,6 +308,8 @@ go-prompt-kit/
 * `ports.Converter.ExtractTitle` は形式非依存です。`jsondoc.Converter` はこれを「トップレベルの `title` キーの取得」として実装しています（キーは `jsondoc.WithTitleKey` で変更可能）。
 * タイトルを自動抽出する場合、`Convert` と `ExtractTitle` をそれぞれ呼ぶと同じ入力を2回解析することになります。これを避けるためのオプショナルなインターフェースが `ports.TitledConverter`（`ConvertWithTitle`）で、同梱の 2 つの Converter はどちらも実装しています。`Document` は実装していればそちらを優先し、していなければ従来どおり動きます。自作の Converter で 1 回の解析にまとめられる場合は実装してください。
 * `jsondoc` は JSON の数値を `json.Number`（入力に書かれた字面のままの文字列）としてテンプレートへ渡します。`float64` を経由すると桁の大きい整数が `1.234567890123e+12` という指数表記になり、`0.30` も `0.3` に丸められて、文書に載る数が入力と食い違うためです。テンプレート側で数値として比較・計算する場合は、変換用の関数を `Funcs` で登録してください。
+* `markdown.WithAutoHeadingID(true)` は見出しへ `id` を振ります。目次からアンカーリンクを張る場合に使います。
+* 上記のオプションで表現できない goldmark の設定は `markdown.WithGoldmarkOptions` で直接渡せます。同梱のオプションを増やす前に、まずこちらで足りるか確かめてください。
 * `markdown.WithUnsafeHTML(true)` は Markdown 中の生 HTML をそのまま出力します。信頼できない入力に対しては有効化しないでください。同様に `renderer.WithCSS` の内容もエスケープされずに `<style>` へ挿入されます。
 
 ---

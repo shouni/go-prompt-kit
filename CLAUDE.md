@@ -24,10 +24,13 @@ go test ./htmldoc/markdown -run TestConverter_ExtractTitle -v
 
 go vet ./...
 test -z "$(gofmt -l .)"                   # CI fails on any unformatted file
-golangci-lint run                         # config in .golangci.yml; CI pins v2.13.1
+golangci-lint run                         # config in .golangci.yml; CI uses the shared workflow's pin
 ```
 
-CI (`.github/workflows/ci.yml`) runs build/vet/gofmt/race-test, golangci-lint, and govulncheck on pushes and PRs to `main` and `develop`. Current work happens on `develop`.
+CI (`.github/workflows/ci.yml`) is a thin caller of the shared `shouni/workflows/.github/workflows/go-ci.yml@v1`.
+This repo passes no inputs, so it gets the defaults: build/vet/gofmt/race-test, golangci-lint and govulncheck
+on pushes and PRs to `main` and `develop`, with no coverage upload and no fuzz job. The golangci-lint version
+and the job timeouts live in that shared workflow, not here. Current work happens on `develop`.
 
 ## Architecture
 
