@@ -206,10 +206,7 @@ cat > /tmp/gpk.work <<'EOF'
 go 1.27
 use (
 	/Users/kensukeshouni/GolandProjects/go-prompt-kit
-	/Users/kensukeshouni/GolandProjects/ap-story
-	/Users/kensukeshouni/GolandProjects/ap-voice
-	/Users/kensukeshouni/GolandProjects/ap-comp
-	/Users/kensukeshouni/GolandProjects/ap-mv
+	/Users/kensukeshouni/GolandProjects/your-app
 	/Users/kensukeshouni/GolandProjects/adk-review
 	/Users/kensukeshouni/GolandProjects/ap-mcp
 )
