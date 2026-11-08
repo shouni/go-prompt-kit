@@ -208,15 +208,15 @@ a temporary workspace:
 cat > /tmp/gpk.work <<'EOF'
 go 1.27
 use (
-	/Users/kensukeshouni/GolandProjects/go-prompt-kit
-	/Users/kensukeshouni/GolandProjects/your-app
-	/Users/kensukeshouni/GolandProjects/adk-review
-	/Users/kensukeshouni/GolandProjects/ap-mcp
+	<src>/go-prompt-kit
+	<src>/adk-review
+	<src>/ap-story
+	<src>/<other consumers>
 )
 EOF
-cd /Users/kensukeshouni/GolandProjects/ap-story && GOWORK=/tmp/gpk.work go test ./...
+cd <src>/ap-story && GOWORK=/tmp/gpk.work go test ./...
 ```
 
-That `use` block is every consumer; drop the ones you do not need. The `go` directive has to be
+`<src>` is the directory holding the clones (go.work needs absolute paths). The `use` block should list every consumer; drop the ones you do not need. The `go` directive has to be
 at least as new as every module listed, or the workspace is rejected before anything builds
 (all seven are on `go 1.27`). `-mod` cannot be set in workspace mode — leave `GOFLAGS` alone.
