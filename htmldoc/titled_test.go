@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// countingConverter は、どのメソッドが何回呼ばれたかを数える Converter です。
+// countingConverter is a Converter that counts how many times each method is called.
 type countingConverter struct {
 	converts int
 	extracts int
@@ -29,7 +29,7 @@ func (c *countingConverter) ExtractTitle([]byte) string {
 	return "抽出タイトル"
 }
 
-// titledCounter は countingConverter に ports.TitledConverter を足したものです。
+// titledCounter is countingConverter plus ports.TitledConverter.
 type titledCounter struct{ countingConverter }
 
 func (c *titledCounter) ConvertWithTitle(input []byte) ([]byte, string, error) {
@@ -37,8 +37,8 @@ func (c *titledCounter) ConvertWithTitle(input []byte) ([]byte, string, error) {
 	return []byte("<p>" + string(input) + "</p>"), "抽出タイトル", nil
 }
 
-// TestDocument_Run_UsesTitledConverter は、タイトルを自動抽出するとき
-// TitledConverter が1回だけ呼ばれ、入力が二度解析されないことを確認します。
+// TestDocument_Run_UsesTitledConverter confirms that when the title is extracted automatically,
+// TitledConverter is called once and the input is not parsed twice.
 func TestDocument_Run_UsesTitledConverter(t *testing.T) {
 	c := &titledCounter{}
 	doc, err := htmldoc.New(htmldoc.WithConverter(c))
@@ -47,14 +47,14 @@ func TestDocument_Run_UsesTitledConverter(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, doc.Run(&buf, "", []byte("本文")))
 
-	assert.Equal(t, 1, c.titled, "まとめて解析する経路が使われていません")
+	assert.Equal(t, 1, c.titled, "the single-parse path was not used")
 	assert.Zero(t, c.converts)
-	assert.Zero(t, c.extracts, "入力を二度解析しています")
+	assert.Zero(t, c.extracts, "the input was parsed twice")
 	assert.Contains(t, buf.String(), "<title>抽出タイトル</title>")
 }
 
-// TestDocument_Run_TitleGivenSkipsExtraction は、タイトルが指定されている場合に
-// 抽出そのものを行わないことを確認します。
+// TestDocument_Run_TitleGivenSkipsExtraction confirms that no extraction happens at all when a
+// title is given.
 func TestDocument_Run_TitleGivenSkipsExtraction(t *testing.T) {
 	c := &titledCounter{}
 	doc, err := htmldoc.New(htmldoc.WithConverter(c))
@@ -69,8 +69,8 @@ func TestDocument_Run_TitleGivenSkipsExtraction(t *testing.T) {
 	assert.Contains(t, buf.String(), "<title>指定タイトル</title>")
 }
 
-// TestDocument_Run_FallsBackToConverter は、ports.Converter だけを実装した
-// Converter でも Convert と ExtractTitle の経路で動くことを確認します。
+// TestDocument_Run_FallsBackToConverter confirms that a Converter implementing only ports.Converter
+// still works through the Convert and ExtractTitle path.
 func TestDocument_Run_FallsBackToConverter(t *testing.T) {
 	c := &countingConverter{}
 	doc, err := htmldoc.New(htmldoc.WithConverter(c))
@@ -84,7 +84,7 @@ func TestDocument_Run_FallsBackToConverter(t *testing.T) {
 	assert.Contains(t, buf.String(), "<title>抽出タイトル</title>")
 }
 
-// emptyTitleConverter は、タイトルを抽出できない TitledConverter です。
+// emptyTitleConverter is a TitledConverter that cannot extract a title.
 type emptyTitleConverter struct{ countingConverter }
 
 func (c *emptyTitleConverter) ConvertWithTitle(input []byte) ([]byte, string, error) {
@@ -92,8 +92,8 @@ func (c *emptyTitleConverter) ConvertWithTitle(input []byte) ([]byte, string, er
 	return []byte("<p>" + string(input) + "</p>"), "", nil
 }
 
-// TestDocument_Run_TitledConverterFallsBackToDefault は、まとめて解析する経路でも
-// タイトルを抽出できなければ既定値になることを確認します。
+// TestDocument_Run_TitledConverterFallsBackToDefault confirms that the single-parse path also falls
+// back to the default when no title can be extracted.
 func TestDocument_Run_TitledConverterFallsBackToDefault(t *testing.T) {
 	doc, err := htmldoc.New(
 		htmldoc.WithConverter(&emptyTitleConverter{}),
@@ -107,14 +107,14 @@ func TestDocument_Run_TitledConverterFallsBackToDefault(t *testing.T) {
 	assert.Contains(t, buf.String(), "<title>既定タイトル</title>")
 }
 
-// plainConverter は ConvertWithTitle を隠し、Converter だけを見せます。
+// plainConverter hides ConvertWithTitle and exposes only Converter.
 type plainConverter struct{ inner ports.Converter }
 
 func (p plainConverter) Convert(input []byte) ([]byte, error) { return p.inner.Convert(input) }
 func (p plainConverter) ExtractTitle(input []byte) string     { return p.inner.ExtractTitle(input) }
 
-// TestDocument_Run_BothPathsAgree は、まとめて解析する経路とそうでない経路が
-// 同じドキュメントを出力することを確認します。速さのために結果が変わっては困ります。
+// TestDocument_Run_BothPathsAgree confirms that the single-parse path and the other path output the
+// same document. Speed must not change the result.
 func TestDocument_Run_BothPathsAgree(t *testing.T) {
 	inputs := []string{
 		"# タイトル\n\n本文です。\n",

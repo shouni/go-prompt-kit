@@ -8,101 +8,105 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Reference](https://pkg.go.dev/badge/github.com/shouni/go-prompt-kit.svg)](https://pkg.go.dev/github.com/shouni/go-prompt-kit)
 
-## 🚀 概要 (About) - プロンプトの組み立てと、応答の HTML 化。AI そのものは知らない
+English | [日本語](README.ja.md)
 
-**Go Prompt Kit** は、AI 連携アプリの入口と出口を引き受けるツールキットです。入口は
-`embed.FS` に置いたプロンプトをモード別に読み込んで実行すること、出口は返ってきた
-Markdown / JSON を完全な HTML ドキュメントへ組み立てることです。
+## 🚀 About - Assembles prompts and turns responses into HTML. Knows nothing about the AI itself
 
-**AI SDK には依存せず、送信も受信も行いません。** どのモデルへどう送るかはアプリの選択です。
-出力側もスキーマやテンプレートの中身には関知せず、JSON の構造は呼び出し側の
-`html/template` が決めます。
+**Go Prompt Kit** is a toolkit that takes care of the entrance and the exit of an AI-backed app. The
+entrance is loading prompts placed in an `embed.FS` per mode and executing them; the exit is
+assembling the returned Markdown / JSON into a complete HTML document.
 
----
-
-## ✨ 提供機能 (Features)
-
-* **モード別プロンプト** — ファイル名がそのままモード名になり、モードを足す作業はファイルを
-  1 つ置くだけで済みます。共通の指示は partial（`_` 始まり）に切り出して複数モードから共有できます。
-* **送る前に中身を確かめられる** — `Expand` はデータ無しで partial 展開済みの本文を返し、
-  `Fields` はそのモードが data に要求するフィールドを列挙します。カタログ表示や検査に使えます。
-* **front matter** — モードの説明をプロンプト自身に持たせられます。切り離しから `Builder` への
-  登録までが 1 回の読み込みで済みます。
-* **HTML ドキュメント化** — Markdown か JSON かは注入する `Converter` が決め、CSS も外枠のテンプレートも
-  差し替えられます。出力は `io.Writer` へ直接書き出すので、`http.ResponseWriter` にもファイルにも渡せます。
-* **構築後は不変** — `Builder` も `Document` も、起動時に一度作って HTTP ハンドラーから並行に使えます。
+**It does not depend on any AI SDK, and it neither sends nor receives.** Which model gets what, and
+how, is the app's choice. The output side does not care about schemas or template contents either:
+the structure of the JSON is decided by the caller's `html/template`.
 
 ---
 
-## 📦 パッケージ構成 (Package Structure)
+## ✨ Features
 
-入口（INPUT）と出口（OUTPUT）は互いに依存せず、片方だけを使えます。
+* **Prompts per mode** — the file name is the mode name, so adding a mode is just placing one
+  file. Shared instructions can be cut out into partials (starting with `_`) and shared by several modes.
+* **Inspect before sending** — `Expand` returns the body with partials expanded, without any data,
+  and `Fields` lists the fields the mode requires from its data. Useful for catalog views and checks.
+* **Front matter** — a prompt can carry its own mode description. Splitting it off and registering
+  the body with the `Builder` take a single load.
+* **HTML documents** — the injected `Converter` decides whether the input is Markdown or JSON, and
+  both the CSS and the outer template can be replaced. Output is written straight to an `io.Writer`,
+  so it can go to an `http.ResponseWriter` or a file.
+* **Immutable after construction** — both `Builder` and `Document` can be built once at startup and
+  used concurrently from HTTP handlers.
 
-| パッケージ | 役割 |
+---
+
+## 📦 Package Structure
+
+The entrance (INPUT) and the exit (OUTPUT) do not depend on each other; either can be used alone.
+
+| Package | Role |
 | --- | --- |
-| `prompts` | 【INPUT】モード管理・partial・テンプレート実行（`Builder` / `LoadFS`） |
-| `resource` | 【INPUT】`fs.FS` からのファイル読み込みとモード名の導出（`Load`） |
-| `frontmatter` | 【INPUT】プロンプト先頭のメタデータの切り離し（`Split` / `Decode`。標準ライブラリのみ） |
-| `htmldoc` | 【OUTPUT】変換とレンダリングを束ねる入口（`Document.Run`） |
-| `htmldoc/ports` | 【OUTPUT】`Converter` / `TitledConverter` / `Renderer` / `Runner` の定義 |
-| `htmldoc/markdown` | 【OUTPUT】Markdown → HTML フラグメント変換とタイトル抽出（goldmark） |
-| `htmldoc/jsondoc` | 【OUTPUT】JSON → HTML フラグメント変換（テンプレートは呼び出し側が注入） |
-| `htmldoc/renderer` | 【OUTPUT】フラグメントを完全な HTML へ組み立てる（CSS / 外枠テンプレート） |
+| `prompts` | [INPUT] Mode management, partials and template execution (`Builder` / `LoadFS`) |
+| `resource` | [INPUT] Reading files from an `fs.FS` and deriving mode names (`Load`) |
+| `frontmatter` | [INPUT] Splitting the metadata off the top of a prompt (`Split` / `Decode`; standard library only) |
+| `htmldoc` | [OUTPUT] Entry point tying conversion and rendering together (`Document.Run`) |
+| `htmldoc/ports` | [OUTPUT] Definitions of `Converter` / `TitledConverter` / `Renderer` / `Runner` |
+| `htmldoc/markdown` | [OUTPUT] Markdown → HTML fragment conversion and title extraction (goldmark) |
+| `htmldoc/jsondoc` | [OUTPUT] JSON → HTML fragment conversion (the caller injects the template) |
+| `htmldoc/renderer` | [OUTPUT] Assembles a fragment into a complete HTML document (CSS / outer template) |
 
-各シンボルの引数・戻り値・オプションは
-[pkg.go.dev](https://pkg.go.dev/github.com/shouni/go-prompt-kit) にあります。
+The arguments, return values and options of every symbol are on
+[pkg.go.dev](https://pkg.go.dev/github.com/shouni/go-prompt-kit).
 
 ---
 
-## 🚦 使い方 (Usage)
+## 🚦 Usage
 
-プロンプトを読み込んで 1 本組み立て、その応答を HTML にするまでです。
+From loading prompts and building one, to turning its response into HTML:
 
 ```go
 //go:embed prompts/prompt_*.md
 var promptFiles embed.FS
 
-// モード名はファイル名から接頭辞と拡張子を除いたもの（prompt_review.md → "review"）。
+// The mode name is the file name without the prefix and extension (prompt_review.md → "review").
 builder, err := prompts.LoadFS(promptFiles, "prompts", prompts.WithPrefix("prompt_"))
 if err != nil {
     return err
 }
 
 prompt, err := builder.Build("review", struct{ Diff string }{Diff: diff})
-// …ここで AI へ送るのは呼び出し側です…
+// …sending it to the AI is the caller's job…
 
 doc, err := htmldoc.New(htmldoc.WithConverterOptions(markdown.WithCJK(true)))
 if err != nil {
     return err
 }
-// タイトルに空文字を渡すと、最初の見出しから自動抽出されます。
+// An empty title makes it extracted from the first heading.
 err = doc.Run(w, "", response)
 ```
 
-階層化（`prompts/en/rock.md` → `en/rock`）は `WithRecursive`、モード未指定のフォールバックは
-`WithDefaultMode`、テンプレート関数は `WithFuncs` です。JSON の応答を任意のテンプレートで
-組み立てる場合は `htmldoc.WithConverter(jsondoc.New(tpl))` を渡します。
+Hierarchies (`prompts/en/rock.md` → `en/rock`) come from `WithRecursive`, a fallback for an
+unspecified mode from `WithDefaultMode`, and template functions from `WithFuncs`. To assemble a JSON
+response with your own template, pass `htmldoc.WithConverter(jsondoc.New(tpl))`.
 
-**踏むと高くつく点も、それぞれの godoc に書いてあります** — テンプレートの名前空間が 1 つで
-`{{define}}` が衝突すること、partial の末尾の改行が本文の途中で空行になること、読み込み専用の
-オプションを `NewBuilder` に渡すとエラーになること、`Fields` が `range` / `with` の内側を列挙しない
-こと、front matter の書式は `UnmarshalFunc` に委ねること、`jsondoc` が JSON の数値を字面のまま
-扱うこと、`renderer` の CSS と本文はエスケープされないこと。
-
----
-
-## 🤝 依存関係 (Dependencies)
-
-本体のコードが参照する外部モジュールは **1 つだけ**です。
-
-* [`github.com/yuin/goldmark`](https://github.com/yuin/goldmark): Markdown 解析・HTML 変換（`htmldoc/markdown` のみが使用）
-* [`stretchr/testify`](https://github.com/stretchr/testify): テストのみ
-
-`prompts` / `resource` / `frontmatter` は標準ライブラリ（`text/template` / `io/fs` / `embed`）だけで、
-`htmldoc/jsondoc` も `encoding/json` と `encoding/json/jsontext` だけで動きます。
+**The costly pitfalls are documented in their godoc too** — there is a single template namespace, so
+`{{define}}` names can collide; a partial's trailing newline becomes a blank line mid-body; passing a
+load-only option to `NewBuilder` is an error; `Fields` does not list what is inside `range` / `with`;
+the front matter format is left to an `UnmarshalFunc`; `jsondoc` keeps JSON numbers as written; and
+the `renderer` does not escape the CSS or the body.
 
 ---
 
-## 📜 ライセンス (License)
+## 🤝 Dependencies
 
-このプロジェクトは [MIT License](https://opensource.org/licenses/MIT) の下で公開されています。
+The library code references **only one** external module.
+
+* [`github.com/yuin/goldmark`](https://github.com/yuin/goldmark): Markdown parsing and HTML conversion (used only by `htmldoc/markdown`)
+* [`stretchr/testify`](https://github.com/stretchr/testify): tests only
+
+`prompts` / `resource` / `frontmatter` use only the standard library (`text/template` / `io/fs` / `embed`),
+and `htmldoc/jsondoc` runs on `encoding/json` and `encoding/json/jsontext` alone.
+
+---
+
+## 📜 License
+
+This project is released under the [MIT License](https://opensource.org/licenses/MIT).

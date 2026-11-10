@@ -12,7 +12,7 @@ import (
 	"github.com/shouni/go-prompt-kit/htmldoc"
 )
 
-// --- Mock 定義 ---
+// --- Mock definitions ---
 
 type mockConverter struct {
 	convertFunc      func(input []byte) ([]byte, error)
@@ -35,7 +35,7 @@ func (m *mockRenderer) Render(w io.Writer, fragment []byte, lang string, title s
 	return m.renderFunc(w, fragment, lang, title)
 }
 
-// newDocument は、モックを注入した Document を構築します。
+// newDocument builds a Document with the mocks injected.
 func newDocument(t *testing.T, c *mockConverter, r *mockRenderer, opts ...htmldoc.Option) *htmldoc.Document {
 	t.Helper()
 
@@ -50,10 +50,10 @@ func newDocument(t *testing.T, c *mockConverter, r *mockRenderer, opts ...htmldo
 	return doc
 }
 
-// --- テストケース ---
+// --- Test cases ---
 
 func TestDocument_Run(t *testing.T) {
-	t.Run("正常系: タイトルが引数で指定されている場合", func(t *testing.T) {
+	t.Run("success: title given as an argument", func(t *testing.T) {
 		converter := &mockConverter{
 			convertFunc: func(_ []byte) ([]byte, error) {
 				return []byte("<p>hello</p>"), nil
@@ -74,7 +74,7 @@ func TestDocument_Run(t *testing.T) {
 		assert.Equal(t, "<html><p>hello</p></html>", buf.String())
 	})
 
-	t.Run("正常系: タイトル指定がなく、入力から抽出する場合", func(t *testing.T) {
+	t.Run("success: title extracted from input", func(t *testing.T) {
 		const extractedTitle = "Extracted Title"
 		converter := &mockConverter{
 			convertFunc:      func(_ []byte) ([]byte, error) { return []byte("fragment"), nil },
@@ -82,7 +82,7 @@ func TestDocument_Run(t *testing.T) {
 		}
 		renderer := &mockRenderer{
 			renderFunc: func(_ io.Writer, _ []byte, _ string, title string) error {
-				assert.Equal(t, extractedTitle, title, "抽出されたタイトルが使用されていません")
+				assert.Equal(t, extractedTitle, title, "the extracted title was not used")
 				return nil
 			},
 		}
@@ -91,16 +91,16 @@ func TestDocument_Run(t *testing.T) {
 		require.NoError(t, doc.Run(io.Discard, "", []byte("# "+extractedTitle)))
 	})
 
-	t.Run("境界値: 空の入力", func(t *testing.T) {
-		// 空入力時は早期リターンするため、モックが呼ばれないことを確認します。
+	t.Run("boundary: empty input", func(t *testing.T) {
+		// An empty input returns early, so confirm that the mocks are not called.
 		var buf bytes.Buffer
 		doc := newDocument(t, &mockConverter{}, &mockRenderer{})
 
 		require.NoError(t, doc.Run(&buf, "Title", nil))
-		assert.Zero(t, buf.Len(), "空入力時は何も書き出さないはずです")
+		assert.Zero(t, buf.Len(), "an empty input should write nothing")
 	})
 
-	t.Run("異常系: コンバーターがエラーを返す", func(t *testing.T) {
+	t.Run("error: converter fails", func(t *testing.T) {
 		expectedErr := errors.New("convert error")
 		converter := &mockConverter{
 			convertFunc: func(_ []byte) ([]byte, error) { return nil, expectedErr },
@@ -112,7 +112,7 @@ func TestDocument_Run(t *testing.T) {
 		assert.ErrorIs(t, err, expectedErr)
 	})
 
-	t.Run("異常系: レンダラーがエラーを返す", func(t *testing.T) {
+	t.Run("error: renderer fails", func(t *testing.T) {
 		expectedErr := errors.New("render error")
 		converter := &mockConverter{
 			convertFunc:      func(_ []byte) ([]byte, error) { return []byte("ok"), nil },

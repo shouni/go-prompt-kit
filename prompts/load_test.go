@@ -16,7 +16,7 @@ func TestLoadFS(t *testing.T) {
 		"prompts/README.txt":        {Data: []byte("無視される")},
 	}
 
-	t.Run("読み込みとBuilder構築をまとめて行える", func(t *testing.T) {
+	t.Run("loads and builds the Builder in one call", func(t *testing.T) {
 		b, err := LoadFS(mockFS, "prompts", WithPrefix("prompt_"))
 		require.NoError(t, err)
 
@@ -27,13 +27,13 @@ func TestLoadFS(t *testing.T) {
 		assert.Equal(t, "レビュー: 差分", got)
 	})
 
-	t.Run("存在しないディレクトリはエラーを伝播する", func(t *testing.T) {
+	t.Run("propagates the error for a missing directory", func(t *testing.T) {
 		_, err := LoadFS(mockFS, "missing", WithPrefix("prompt_"))
 		require.Error(t, err)
 		assert.ErrorIs(t, err, fs.ErrNotExist)
 	})
 
-	t.Run("該当ファイルが無い場合はErrEmptyTemplates", func(t *testing.T) {
+	t.Run("no matching files is ErrEmptyTemplates", func(t *testing.T) {
 		_, err := LoadFS(mockFS, "prompts", WithPrefix("存在しない接頭辞_"))
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrEmptyTemplates)
@@ -51,11 +51,11 @@ func TestLoadFS_Recursive(t *testing.T) {
 	b, err := LoadFS(mockFS, "prompts", WithRecursive())
 	require.NoError(t, err)
 
-	t.Run("言語ディレクトリがモード名の接頭辞になる", func(t *testing.T) {
+	t.Run("language directory prefixes the mode name", func(t *testing.T) {
 		assert.Equal(t, []string{"en/rock", "ja/rock"}, b.Modes())
 	})
 
-	t.Run("言語ごとのpartialが正しく解決される", func(t *testing.T) {
+	t.Run("resolves per-language partials", func(t *testing.T) {
 		gotJA, err := b.Build("ja/rock", nil)
 		require.NoError(t, err)
 		assert.Equal(t, "ロック\n出力: JSON", gotJA)

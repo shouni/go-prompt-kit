@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConverter_Convert_NumberFidelity は、数値が入力に書かれた字面のまま
-// 出力されることを確認します。float64 を経由すると桁の大きい整数が指数表記になり、
-// 末尾が 0 の小数も丸められて、文書に載る数が入力と食い違います。
+// TestConverter_Convert_NumberFidelity confirms that numbers are output exactly as written in the
+// input. Going through float64 would put large integers into exponent notation and round decimals
+// ending in 0, so the numbers in the document would disagree with the input.
 func TestConverter_Convert_NumberFidelity(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -17,27 +17,27 @@ func TestConverter_Convert_NumberFidelity(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "桁の大きい整数",
+			name:  "large integer",
 			input: `{"value":1234567890123}`,
 			want:  "1234567890123",
 		},
 		{
-			name:  "末尾が0の小数",
+			name:  "decimal with trailing zero",
 			input: `{"value":0.30}`,
 			want:  "0.30",
 		},
 		{
-			name:  "float64で表現できない精度",
+			name:  "precision beyond float64",
 			input: `{"value":12345678901234567890}`,
 			want:  "12345678901234567890",
 		},
 		{
-			name:  "指数表記はそのまま",
+			name:  "exponent notation unchanged",
 			input: `{"value":1e3}`,
 			want:  "1e3",
 		},
 		{
-			name:  "小さい整数",
+			name:  "small integer",
 			input: `{"value":42}`,
 			want:  "42",
 		},
@@ -53,9 +53,9 @@ func TestConverter_Convert_NumberFidelity(t *testing.T) {
 	}
 }
 
-// TestConverter_Convert_TrailingData は、1つの値の後ろに余分なデータがある入力を
-// 拒むことを確認します。json.Unmarshal は拒みますが、json.Decoder は読み飛ばすため、
-// 明示的に確かめないと壊れた入力の前半だけが黙って描画されます。
+// TestConverter_Convert_TrailingData confirms that input with extra data after one value is
+// rejected. json.Unmarshal rejects it but json.Decoder skips it, so without an explicit check only
+// the first half of a broken input would be rendered silently.
 func TestConverter_Convert_TrailingData(t *testing.T) {
 	c := New(mustParse(t, "t", `{{.a}}`))
 
@@ -64,9 +64,9 @@ func TestConverter_Convert_TrailingData(t *testing.T) {
 		input   string
 		wantErr bool
 	}{
-		{name: "末尾の空白は許容", input: "{\"a\":1}\n  "},
-		{name: "2つ目の値", input: `{"a":1} {"b":2}`, wantErr: true},
-		{name: "壊れた末尾", input: `{"a":1}]`, wantErr: true},
+		{name: "trailing whitespace allowed", input: "{\"a\":1}\n  "},
+		{name: "second value", input: `{"a":1} {"b":2}`, wantErr: true},
+		{name: "broken trailer", input: `{"a":1}]`, wantErr: true},
 	}
 
 	for _, tt := range tests {

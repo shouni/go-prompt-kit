@@ -7,7 +7,7 @@ import (
 	"github.com/shouni/go-prompt-kit/resource"
 )
 
-// config は Builder の構築設定を保持します。
+// config holds the settings for building a Builder.
 type config struct {
 	funcs            template.FuncMap
 	partialPrefix    string
@@ -16,12 +16,12 @@ type config struct {
 	splitFrontMatter bool
 	trimPartials     bool
 
-	// loadOnly は、指定された「読み込み時のみ有効なオプション」の名前です。
-	// NewBuilder に渡された場合、黙って無視せずエラーにするために記録します。
+	// loadOnly holds the names of the given options that are only valid while loading. They are
+	// recorded so that NewBuilder reports them as an error instead of silently ignoring them.
 	loadOnly []string
 }
 
-// newConfig は既定値を適用したうえでオプションを反映します。
+// newConfig applies the defaults and then the options.
 func newConfig(opts ...Option) *config {
 	cfg := &config{
 		partialPrefix: DefaultPartialPrefix,
@@ -32,15 +32,15 @@ func newConfig(opts ...Option) *config {
 	return cfg
 }
 
-// Option は Builder の構築設定を変更する関数型です。
+// Option is a function that changes the settings for building a Builder.
 //
-// WithPrefix / WithRecursive / WithExtensions / WithFrontMatter は
-// ファイルを読むときにしか意味がないため LoadFS 専用で、
-// NewBuilder に渡すと ErrLoadOnlyOption になります。それ以外は両方で使えます。
+// WithPrefix / WithRecursive / WithExtensions / WithFrontMatter only mean something while reading
+// files, so they are for LoadFS only; passing them to NewBuilder gives ErrLoadOnlyOption. The
+// others work with both.
 type Option func(*config)
 
-// WithFuncs は、テンプレートから呼び出せるカスタム関数を登録します。
-// 複数回指定した場合はマージされ、同名の関数は後勝ちになります。
+// WithFuncs registers custom functions callable from templates. Several calls are merged, and a
+// later function with the same name wins.
 //
 //	builder, err := prompts.NewBuilder(templates, prompts.WithFuncs(template.FuncMap{
 //	    "join": strings.Join,
@@ -57,39 +57,38 @@ func WithFuncs(funcs template.FuncMap) Option {
 	}
 }
 
-// WithTrimPartials は、partial の末尾の改行を取り除いてから登録します。
+// WithTrimPartials removes a partial's trailing newline before registering it.
 //
-// ファイルは改行で終わるのが普通なので、partial を本文の途中へ差し込むと、
-// その位置にだけ空行が入ります。末尾で参照している限り出力に差は出ないため、
-// 本文の途中で使った箇所だけで表面化します。空行が段落の区切りを意味する形式
-// （Markdown など）では、そこだけ段落が分かれた文章になります。
+// Files normally end with a newline, so a partial inserted mid-body adds a blank line at that point
+// only. Referenced at the end of a body it makes no difference in the output, so it surfaces only
+// where a partial is used mid-body. In formats where a blank line means a paragraph break (such as
+// Markdown), the text is split into a separate paragraph right there.
 //
-// 取り除くのは末尾の改行（LF / CRLF）だけです。行末の空白や本文中の改行は
-// そのまま残るため、意図した空行は partial 側に空行を書けば保てます。
+// Only the trailing newlines (LF / CRLF) are removed. Trailing spaces and newlines inside the body
+// stay, so an intended blank line is kept by writing one in the partial.
 //
 //	builder, err := prompts.LoadFS(promptFiles, "prompts", prompts.WithTrimPartials())
 //
-// 既定で取り除かないのは、末尾で参照している既存の呼び出しの出力を
-// 変えないためです。
+// It does not trim by default so that the output of existing callers that reference partials at the
+// end does not change.
 func WithTrimPartials() Option {
 	return func(c *config) {
 		c.trimPartials = true
 	}
 }
 
-// WithPartialPrefix は、partial とみなすエントリ名の接頭辞を変更します
-// （既定は DefaultPartialPrefix = "_"）。
-// 空文字を指定すると partial の判定を行わず、全エントリがモードとして公開されます。
+// WithPartialPrefix changes the entry-name prefix that marks a partial (default
+// DefaultPartialPrefix = "_"). The empty string disables partial detection, so every entry is
+// exposed as a mode.
 func WithPartialPrefix(prefix string) Option {
 	return func(c *config) {
 		c.partialPrefix = prefix
 	}
 }
 
-// WithDefaultMode は、未登録のモードが Build に渡された場合のフォールバック先を設定します。
-// 空文字が渡された場合も既定モードへ委ねられるため、
-// 呼び出し側でモード未指定を判定する必要がなくなります。
-// 指定したモードが実在しない場合、NewBuilder は ErrUnknownMode を返します。
+// WithDefaultMode sets the fallback for an unregistered mode passed to Build. The empty string also
+// falls back to the default mode, so callers need not check for an unspecified mode. If the given
+// mode does not exist, NewBuilder returns ErrUnknownMode.
 func WithDefaultMode(mode string) Option {
 	return func(c *config) {
 		if mode != "" {
@@ -98,8 +97,8 @@ func WithDefaultMode(mode string) Option {
 	}
 }
 
-// WithPrefix は resource.WithPrefix と同じく、対象を指定した接頭辞を持つ
-// ファイルへ限定し、接頭辞をモード名から取り除きます。LoadFS 専用です。
+// WithPrefix limits loading to files with the given prefix and removes the prefix from the mode
+// name, like resource.WithPrefix. LoadFS only.
 func WithPrefix(prefix string) Option {
 	return func(c *config) {
 		c.resourceOptions = append(c.resourceOptions, resource.WithPrefix(prefix))
@@ -107,8 +106,8 @@ func WithPrefix(prefix string) Option {
 	}
 }
 
-// WithRecursive は resource.WithRecursive と同じく、サブディレクトリを再帰的に
-// 読み込み、モード名を rootDir からの相対パスにします（例: "en/rock"）。LoadFS 専用です。
+// WithRecursive reads subdirectories recursively and makes the mode name the path relative to
+// rootDir (e.g. "en/rock"), like resource.WithRecursive. LoadFS only.
 func WithRecursive() Option {
 	return func(c *config) {
 		c.resourceOptions = append(c.resourceOptions, resource.WithRecursive())
@@ -116,8 +115,8 @@ func WithRecursive() Option {
 	}
 }
 
-// WithExtensions は resource.WithExtensions と同じく、対象を指定した拡張子の
-// ファイルへ限定します。LoadFS 専用です。
+// WithExtensions limits loading to files with the given extensions, like resource.WithExtensions.
+// LoadFS only.
 func WithExtensions(exts ...string) Option {
 	return func(c *config) {
 		c.resourceOptions = append(c.resourceOptions, resource.WithExtensions(exts...))
@@ -125,12 +124,12 @@ func WithExtensions(exts ...string) Option {
 	}
 }
 
-// WithFrontMatter は、各ファイルの先頭にある front matter を本文から切り離し、
-// 本文だけをテンプレートとして登録します。切り離した内容は
-// Builder.FrontMatter / Builder.FrontMatters から取得できます。
+// WithFrontMatter splits the front matter at the top of each file off its body and registers only
+// the body as a template. What was split off is available from Builder.FrontMatter /
+// Builder.FrontMatters.
 //
-// 指定しない場合、front matter は本文の一部として扱われ、
-// AIへの指示の先頭にメタデータが紛れ込みます。LoadFS 専用です。
+// Without it, front matter is treated as part of the body, and the metadata ends up at the top of
+// the instruction sent to the AI. LoadFS only.
 func WithFrontMatter() Option {
 	return func(c *config) {
 		c.splitFrontMatter = true

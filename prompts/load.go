@@ -7,18 +7,17 @@ import (
 	"github.com/shouni/go-prompt-kit/resource"
 )
 
-// LoadFS は、ファイルシステムからテンプレートを読み込んで Builder を構築します。
-// embed.FS からの読み込みと Builder の構築をまとめた入口で、読み込みと構築の
-// 間に手を入れる必要がなければ、resource.Load と NewBuilder を個別に呼ぶ代わりに
-// これを使えます。
+// LoadFS reads templates from a file system and builds a Builder. It is the entry point combining
+// loading from an embed.FS with building the Builder; when nothing needs to happen between loading
+// and building, use it instead of calling resource.Load and NewBuilder separately.
 //
 //	//go:embed prompts/*.md
 //	var promptFiles embed.FS
 //
 //	builder, err := prompts.LoadFS(promptFiles, "prompts")
 //
-// プロンプトが先頭に front matter を持つ場合は WithFrontMatter を指定します。
-// 本文だけがテンプレートとして登録され、front matter は Builder.FrontMatter から取得できます。
+// When the prompts start with front matter, pass WithFrontMatter. Only the body is registered as a
+// template, and the front matter is available from Builder.FrontMatter.
 //
 //	builder, err := prompts.LoadFS(promptFiles, "prompts", prompts.WithFrontMatter())
 //	meta, err := frontmatter.DecodeMap[ModeInfo](builder.FrontMatters(), yaml.Unmarshal)
@@ -35,7 +34,7 @@ func LoadFS(fileSystem fs.FS, rootDir string, opts ...Option) (*Builder, error) 
 		templates, fronts = frontmatter.SplitMap(templates)
 	}
 
-	// 読み込み専用オプションはここで消費済みのため、NewBuilder の検査は通しません。
+	// The load-only options were consumed here, so skip NewBuilder's check.
 	builder, err := newBuilder(templates, cfg)
 	if err != nil {
 		return nil, err

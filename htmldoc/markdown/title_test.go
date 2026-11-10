@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConverter_ExtractTitle_BlockContext は、行単位の正規表現では
-// 誤判定していたケースを検証します。いずれも構文木を辿ることで正しく解決されます。
+// TestConverter_ExtractTitle_BlockContext verifies cases that a line-based regular expression used
+// to get wrong. Walking the syntax tree resolves all of them correctly.
 func TestConverter_ExtractTitle_BlockContext(t *testing.T) {
 	c := New()
 
@@ -19,67 +19,67 @@ func TestConverter_ExtractTitle_BlockContext(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "フェンス付きコードブロック内の#は見出しではない",
+			name:  "# in a fenced code block is not a heading",
 			input: "```sh\n# これはコメント\necho hi\n```\n\n# 本当のタイトル\n",
 			want:  "本当のタイトル",
 		},
 		{
-			name:  "チルダのフェンスでも同様",
+			name:  "same with a tilde fence",
 			input: "~~~\n# コメント\n~~~\n\n# 本物\n",
 			want:  "本物",
 		},
 		{
-			name:  "4スペースインデントはコードブロックであり見出しではない",
+			name:  "4-space indent is a code block, not a heading",
 			input: "    # コードブロック内\n\n# 本物\n",
 			want:  "本物",
 		},
 		{
-			name:  "閉じの#列は取り除かれる",
+			name:  "closing hashes are removed",
 			input: "# タイトル #\n",
 			want:  "タイトル",
 		},
 		{
-			name:  "setext形式の見出し（=）",
+			name:  "setext heading (=)",
 			input: "タイトル\n=====\n\n本文\n",
 			want:  "タイトル",
 		},
 		{
-			name:  "setext形式の見出し（-）",
+			name:  "setext heading (-)",
 			input: "サブタイトル\n-----\n",
 			want:  "サブタイトル",
 		},
 		{
-			name:  "エスケープされた#は見出しにならない",
+			name:  "escaped # is not a heading",
 			input: "\\# 見出しではない\n\n# 本物\n",
 			want:  "本物",
 		},
 		{
-			name:  "強調記法は取り除かれ中身のテキストが残る",
+			name:  "emphasis is stripped to its text",
 			input: "# **強調**された*タイトル*\n",
 			want:  "強調されたタイトル",
 		},
 		{
-			name:  "コードスパンは中身のテキストが残る",
+			name:  "code span keeps its text",
 			input: "# `Runner` の説明\n",
 			want:  "Runner の説明",
 		},
 		{
-			name:  "リンクはラベルのテキストが残る",
+			name:  "link keeps its label text",
 			input: "# [プロジェクト](https://example.com) の概要\n",
 			want:  "プロジェクト の概要",
 		},
 		{
-			name:  "引用の中の見出しも見出しとして扱う",
+			name:  "heading inside a blockquote counts",
 			input: "> # 引用内の見出し\n",
 			want:  "引用内の見出し",
 		},
 		{
-			name:  "空入力",
+			name:  "empty input",
 			input: "",
 			want:  "",
 		},
 		{
-			name:  "見出しのみで本文がない",
+			name:  "heading only, no body",
 			input: "# 単独の見出し",
 			want:  "単独の見出し",
 		},
@@ -93,56 +93,56 @@ func TestConverter_ExtractTitle_BlockContext(t *testing.T) {
 }
 
 func TestConverter_Options(t *testing.T) {
-	t.Run("WithUnsafeHTML: 無効なら生HTMLは出力されない", func(t *testing.T) {
+	t.Run("WithUnsafeHTML: disabled omits raw HTML", func(t *testing.T) {
 		c := New(WithUnsafeHTML(false))
 		got, err := c.Convert([]byte("<div>raw</div>\n"))
 		require.NoError(t, err)
 		assert.NotContains(t, string(got), "<div>raw</div>")
 	})
 
-	t.Run("WithUnsafeHTML: 有効なら生HTMLがそのまま出力される", func(t *testing.T) {
+	t.Run("WithUnsafeHTML: enabled outputs raw HTML as is", func(t *testing.T) {
 		c := New(WithUnsafeHTML(true))
 		got, err := c.Convert([]byte("<div>raw</div>\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), "<div>raw</div>")
 	})
 
-	t.Run("WithHardWraps: 単純な改行が<br>になる", func(t *testing.T) {
+	t.Run("WithHardWraps: plain newline becomes <br>", func(t *testing.T) {
 		c := New(WithHardWraps(true))
 		got, err := c.Convert([]byte("一行目\n二行目\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), "<br>")
 	})
 
-	t.Run("WithAutoHeadingID: 見出しにid属性が付く", func(t *testing.T) {
+	t.Run("WithAutoHeadingID: headings get an id", func(t *testing.T) {
 		c := New(WithAutoHeadingID(true))
 		got, err := c.Convert([]byte("# Section Title\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), `id="section-title"`)
 	})
 
-	t.Run("WithAutoHeadingID: 無効ならid属性は付かない", func(t *testing.T) {
+	t.Run("WithAutoHeadingID: disabled adds no id", func(t *testing.T) {
 		c := New(WithAutoHeadingID(false))
 		got, err := c.Convert([]byte("# Section Title\n"))
 		require.NoError(t, err)
 		assert.NotContains(t, string(got), `id=`)
 	})
 
-	t.Run("WithFootnotes: 脚注が展開される", func(t *testing.T) {
+	t.Run("WithFootnotes: footnotes are rendered", func(t *testing.T) {
 		c := New(WithFootnotes(true))
 		got, err := c.Convert([]byte("本文[^1]\n\n[^1]: 注釈\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), "footnote")
 	})
 
-	t.Run("WithTypographer: 引用符が活字記号へ置換される", func(t *testing.T) {
+	t.Run("WithTypographer: quotes become typographic", func(t *testing.T) {
 		c := New(WithTypographer(true))
 		got, err := c.Convert([]byte("a -- b\n"))
 		require.NoError(t, err)
 		assert.Contains(t, string(got), "&ndash;")
 	})
 
-	t.Run("複数オプションの併用", func(t *testing.T) {
+	t.Run("several options combined", func(t *testing.T) {
 		c := New(
 			WithUnsafeHTML(true),
 			WithHardWraps(true),
@@ -157,7 +157,7 @@ func TestConverter_Options(t *testing.T) {
 		assert.Contains(t, out, "<br>")
 	})
 
-	t.Run("GFMは常に有効", func(t *testing.T) {
+	t.Run("GFM is always on", func(t *testing.T) {
 		c := New(WithHardWraps(true))
 		got, err := c.Convert([]byte("~~打ち消し~~\n"))
 		require.NoError(t, err)
@@ -165,8 +165,8 @@ func TestConverter_Options(t *testing.T) {
 	})
 }
 
-// TestConverter_Concurrent は、1つのConverterを複数goroutineから
-// 同時に使用しても安全であることを確認します（go test -race で検証されます）。
+// TestConverter_Concurrent confirms that one Converter is safe to use from several goroutines at
+// once (verified by go test -race).
 func TestConverter_Concurrent(t *testing.T) {
 	c := New()
 	input := []byte("# 並行タイトル\n\n本文です。\n")
@@ -179,12 +179,12 @@ func TestConverter_Concurrent(t *testing.T) {
 			defer func() { done <- struct{}{} }()
 			for range 20 {
 				if title := c.ExtractTitle(input); title != "並行タイトル" {
-					t.Errorf("タイトルが一致しません: %q", title)
+					t.Errorf("title mismatch: %q", title)
 					return
 				}
 				got, err := c.Convert(input)
 				if err != nil || !strings.Contains(string(got), "<h1>") {
-					t.Errorf("変換に失敗しました: %v", err)
+					t.Errorf("conversion failed: %v", err)
 					return
 				}
 			}

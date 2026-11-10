@@ -14,17 +14,17 @@ func TestConverter_Convert(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:  "標準的なMarkdownの変換",
+			name:  "standard Markdown",
 			input: "# Hello\nThis is **bold** text.",
 			want:  "<h1>Hello</h1>\n<p>This is <strong>bold</strong> text.</p>\n",
 		},
 		{
-			name:  "GFM拡張（テーブル）の変換",
+			name:  "GFM extension (table)",
 			input: "| ID | Name |\n|---|---|\n| 1 | Alice |",
 			want:  "<table>\n<thead>\n<tr>\n<th>ID</th>\n<th>Name</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>1</td>\n<td>Alice</td>\n</tr>\n</tbody>\n</table>\n",
 		},
 		{
-			name:  "空入力",
+			name:  "empty input",
 			input: "",
 			want:  "",
 		},
@@ -53,37 +53,37 @@ func TestConverter_ExtractTitle(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "H1見出しを抽出",
+			name:  "extracts an H1 heading",
 			input: "# プロジェクトタイトル\n本文が続く",
 			want:  "プロジェクトタイトル",
 		},
 		{
-			name:  "最初の見出しがH2の場合",
+			name:  "first heading is H2",
 			input: "## サブタイトル\n本文",
 			want:  "サブタイトル",
 		},
 		{
-			name:  "インデントされた見出し",
+			name:  "indented heading",
 			input: "   #  スペースありタイトル  ",
 			want:  "スペースありタイトル",
 		},
 		{
-			name:  "複数行ある場合の最初の見出し",
+			name:  "first heading of several lines",
 			input: "テキストのみの行\n# 最初の見出し\n## 二番目の見出し",
 			want:  "最初の見出し",
 		},
 		{
-			name:  "見出しがない場合",
+			name:  "no heading",
 			input: "これはただの本文です。\n- リスト1\n- リスト2",
 			want:  "",
 		},
 		{
-			name:  "シャープのみ（不正な形式）",
+			name:  "hash only (malformed)",
 			input: "#NoSpaceTitle",
 			want:  "",
 		},
 		{
-			name:  "最大レベルのH6見出し",
+			name:  "H6 heading at the max level",
 			input: "###### 最小の見出し",
 			want:  "最小の見出し",
 		},

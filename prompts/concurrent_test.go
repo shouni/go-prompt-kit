@@ -9,12 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestBuilder_Concurrent は、構築後の Builder を複数の goroutine から
-// 同時に使えることを確認します。
+// TestBuilder_Concurrent confirms that a built Builder can be used from several goroutines at once.
 //
-// 利用側は HTTP ハンドラから Build を呼びます（起動時に一度構築して使い回す形）。
-// 保証を書いただけで固定しないと、内部に状態を持つ変更が入ったときに
-// 気付けるのが本番のデータ競合になります。-race での実行に意味があるテストです。
+// Consumers call Build from HTTP handlers (built once at startup and reused). A guarantee that is
+// only written down and not pinned means a change that adds internal state would first be noticed
+// as a data race in production. The test means something when run with -race.
 func TestBuilder_Concurrent(t *testing.T) {
 	b, err := NewBuilder(map[string]string{
 		"greet":    `こんにちは、{{.Name}}さん。{{template "_sign" .}}`,
@@ -43,14 +42,14 @@ func TestBuilder_Concurrent(t *testing.T) {
 			for range iterations {
 				got, err := b.Build(mode, struct{ Name string }{Name: name})
 				assert.NoError(t, err)
-				assert.Equal(t, want, got, "並行実行で出力が混ざっています")
+				assert.Equal(t, want, got, "outputs got mixed up under concurrent execution")
 			}
 		}(i)
 	}
 	wg.Wait()
 }
 
-// TestBuilder_ConcurrentReaders は、参照系のメソッドも並行に呼べることを確認します。
+// TestBuilder_ConcurrentReaders confirms that the read-only methods can be called concurrently too.
 func TestBuilder_ConcurrentReaders(t *testing.T) {
 	b, err := NewBuilder(map[string]string{
 		"greet": "こんにちは",
@@ -72,7 +71,8 @@ func TestBuilder_ConcurrentReaders(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, "こんにちは", expanded)
 
-			// Expand と同じく構文木を辿るため、木を書き換えていないことに意味があります。
+			// It walks the parse trees as Expand does, so not rewriting the trees is what matters
+			// here.
 			fields, err := b.Fields("greet")
 			assert.NoError(t, err)
 			assert.Empty(t, fields)
@@ -81,8 +81,8 @@ func TestBuilder_ConcurrentReaders(t *testing.T) {
 	wg.Wait()
 }
 
-// TestBuilder_ModesIsACopy は、Modes の戻り値を書き換えても
-// Builder の状態が壊れないことを確認します（並行利用の前提です）。
+// TestBuilder_ModesIsACopy confirms that modifying the slice Modes returns does not corrupt the
+// Builder's state (a precondition for concurrent use).
 func TestBuilder_ModesIsACopy(t *testing.T) {
 	b, err := NewBuilder(map[string]string{"greet": "こんにちは", "bye": "さようなら"})
 	require.NoError(t, err)

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestBuilder_Fields は、モードが要求するフィールドの列挙を確認します。
+// TestBuilder_Fields checks the listing of the fields a mode requires.
 func TestBuilder_Fields(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -16,73 +16,73 @@ func TestBuilder_Fields(t *testing.T) {
 		want      []string
 	}{
 		{
-			name:      "単純な参照",
+			name:      "simple reference",
 			templates: map[string]string{"m": `{{.Name}}さん、{{.Message}}`},
 			mode:      "m",
 			want:      []string{"Message", "Name"},
 		},
 		{
-			name:      "ネストは.で繋ぐ",
+			name:      "nested fields joined with .",
 			templates: map[string]string{"m": `{{.Source.Title}} / {{.Source.Author.Name}}`},
 			mode:      "m",
 			want:      []string{"Source.Author.Name", "Source.Title"},
 		},
 		{
-			name:      "重複は1つにまとめる",
+			name:      "deduplicates",
 			templates: map[string]string{"m": `{{.Name}}{{.Name}}{{.Name}}`},
 			mode:      "m",
 			want:      []string{"Name"},
 		},
 		{
-			name:      "参照なし",
+			name:      "no references",
 			templates: map[string]string{"m": `固定の指示文です。`},
 			mode:      "m",
 			want:      nil,
 		},
 		{
-			name:      "ドット単体は記録しない",
+			name:      "bare dot is not recorded",
 			templates: map[string]string{"m": `{{.}}`},
 			mode:      "m",
 			want:      nil,
 		},
 		{
-			name:      "if は . を変えないので本体も辿る",
+			name:      "follows if bodies since if keeps .",
 			templates: map[string]string{"m": `{{if .Detailed}}{{.LongForm}}{{else}}{{.ShortForm}}{{end}}`},
 			mode:      "m",
 			want:      []string{"Detailed", "LongForm", "ShortForm"},
 		},
 		{
-			name:      "partial の中身も辿る",
+			name:      "follows into partials",
 			templates: map[string]string{"m": `{{.Task}}{{template "_sign" .}}`, "_sign": `-- {{.Author}}`},
 			mode:      "m",
 			want:      []string{"Author", "Task"},
 		},
 		{
-			name:      "関数の引数",
+			name:      "function arguments",
 			templates: map[string]string{"m": `{{printf "%s/%s" .A .B}}`},
 			mode:      "m",
 			want:      []string{"A", "B"},
 		},
 		{
-			name:      "入れ子のパイプライン",
+			name:      "nested pipeline",
 			templates: map[string]string{"m": `{{printf "%s" (printf "%s" .Inner)}}`},
 			mode:      "m",
 			want:      []string{"Inner"},
 		},
 		{
-			name:      "変数への代入元",
+			name:      "variable assignment source",
 			templates: map[string]string{"m": `{{$name := .Name}}{{$name}}`},
 			mode:      "m",
 			want:      []string{"Name"},
 		},
 		{
-			name:      "括弧を挟んだ参照",
+			name:      "parenthesized reference",
 			templates: map[string]string{"m": `{{(.User).Name}}`},
 			mode:      "m",
 			want:      []string{"User.Name"},
 		},
 		{
-			name:      "既定モードへのフォールバック",
+			name:      "falls back to the default mode",
 			templates: map[string]string{"fallback": `{{.Name}}`},
 			mode:      "未登録",
 			want:      []string{"Name"},
@@ -106,9 +106,9 @@ func TestBuilder_Fields(t *testing.T) {
 	}
 }
 
-// TestBuilder_Fields_Rebound は、range と with で "." が差し替わる区間の扱いを固定します。
-// 内側のフィールドは data からの位置が決まらないため列挙しませんが、
-// 対象の式・else 節・$ 起点の参照は位置が確定するので列挙します。
+// TestBuilder_Fields_Rebound pins the handling of spans where range and with rebind ".". Fields
+// inside them have no fixed position in data and are not listed, but the target expression, the
+// else clause and $-rooted references have a fixed position and are listed.
 func TestBuilder_Fields_Rebound(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -116,32 +116,32 @@ func TestBuilder_Fields_Rebound(t *testing.T) {
 		want     []string
 	}{
 		{
-			name:     "rangeの対象は列挙し本体は列挙しない",
+			name:     "lists the range target but not its body",
 			template: `{{range .Items}}{{.Title}}{{end}}`,
 			want:     []string{"Items"},
 		},
 		{
-			name:     "rangeのelse節は . が変わらない",
+			name:     "range else keeps .",
 			template: `{{range .Items}}{{.Title}}{{else}}{{.EmptyMessage}}{{end}}`,
 			want:     []string{"EmptyMessage", "Items"},
 		},
 		{
-			name:     "range本体の $ 起点は位置が決まる",
+			name:     "$ inside a range body is resolved",
 			template: `{{range .Items}}{{$.Language}}: {{.Title}}{{end}}`,
 			want:     []string{"Items", "Language"},
 		},
 		{
-			name:     "withも同じ扱い",
+			name:     "with behaves the same",
 			template: `{{with .Source}}{{.Title}}{{end}}`,
 			want:     []string{"Source"},
 		},
 		{
-			name:     "range本体の中のifも差し替わったまま",
+			name:     "if inside a range body keeps the rebound .",
 			template: `{{range .Items}}{{if .Done}}{{$.Mark}}{{end}}{{end}}`,
 			want:     []string{"Items", "Mark"},
 		},
 		{
-			name:     "入れ子のrange",
+			name:     "nested range",
 			template: `{{range .Groups}}{{range .Items}}{{$.Prefix}}{{end}}{{end}}`,
 			want:     []string{"Groups", "Prefix"},
 		},
@@ -159,7 +159,7 @@ func TestBuilder_Fields_Rebound(t *testing.T) {
 	}
 }
 
-// TestBuilder_Fields_Errors は、Expand と同じ理由で断る場合を確認します。
+// TestBuilder_Fields_Errors checks the cases refused for the same reasons as Expand.
 func TestBuilder_Fields_Errors(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -168,25 +168,25 @@ func TestBuilder_Fields_Errors(t *testing.T) {
 		wantErr   error
 	}{
 		{
-			name:      "未登録のモード",
+			name:      "unregistered mode",
 			templates: map[string]string{"m": `{{.Name}}`},
 			mode:      "unknown",
 			wantErr:   ErrUnknownMode,
 		},
 		{
-			name:      "partial は指定できない",
+			name:      "partial is not accepted",
 			templates: map[string]string{"m": `x`, "_p": `{{.Name}}`},
 			mode:      "_p",
 			wantErr:   ErrUnknownMode,
 		},
 		{
-			name:      "データコンテキストを変える参照",
+			name:      "reference that changes the data context",
 			templates: map[string]string{"m": `{{template "_p" .Foo}}`, "_p": `{{.Name}}`},
 			mode:      "m",
 			wantErr:   ErrNotExpandable,
 		},
 		{
-			name:      "循環参照",
+			name:      "cycle",
 			templates: map[string]string{"m": `{{template "_a" .}}`, "_a": `{{template "_b" .}}`, "_b": `{{template "_a" .}}`},
 			mode:      "m",
 			wantErr:   ErrCyclicTemplate,
@@ -204,9 +204,9 @@ func TestBuilder_Fields_Errors(t *testing.T) {
 	}
 }
 
-// TestBuilder_Fields_MatchesBuild は、列挙されたフィールドを揃えたデータなら
-// Build が通ることを確認します。missingkey=error との対であることが Fields の
-// 存在理由なので、片方だけ変わると意味を失います。
+// TestBuilder_Fields_MatchesBuild confirms that Build succeeds with data holding exactly the listed
+// fields. Being the counterpart of missingkey=error is why Fields exists, so a change to only one
+// side would make it pointless.
 func TestBuilder_Fields_MatchesBuild(t *testing.T) {
 	b, err := NewBuilder(map[string]string{
 		"m":     `{{.Language}}で{{.Task}}を行ってください。{{template "_sign" .}}`,
@@ -227,7 +227,7 @@ func TestBuilder_Fields_MatchesBuild(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "値で値を行ってください。-- 値", got)
 
-	// 1つでも欠ければ Build は失敗します（Fields が返した集合が過不足ないことの裏です）。
+	// Missing even one makes Build fail (the flip side of the returned set being exactly right).
 	delete(data, "Task")
 	_, err = b.Build("m", data)
 	assert.Error(t, err)

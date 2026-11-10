@@ -10,7 +10,7 @@ import (
 )
 
 func TestBuilder_Expand(t *testing.T) {
-	t.Run("partialが差し込まれ、アクションはそのまま残る", func(t *testing.T) {
+	t.Run("inlines partials and keeps actions", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_output": "出力形式: JSON",
 			"review":  "対象: {{.Target}}\n{{template \"_output\" .}}\n件数: {{.Count}}",
@@ -22,7 +22,7 @@ func TestBuilder_Expand(t *testing.T) {
 		assert.Equal(t, "対象: {{.Target}}\n出力形式: JSON\n件数: {{.Count}}", got)
 	})
 
-	t.Run("入れ子のpartialも再帰的に展開される", func(t *testing.T) {
+	t.Run("expands nested partials recursively", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_inner": "内側",
 			"_outer": "外側[{{template \"_inner\" .}}]",
@@ -35,8 +35,9 @@ func TestBuilder_Expand(t *testing.T) {
 		assert.Equal(t, "本文 外側[内側]", got)
 	})
 
-	t.Run("登録順に関係なく展開される", func(t *testing.T) {
-		// 参照先が名前順で後ろにあっても解決される（展開順への依存がないこと）
+	t.Run("expands regardless of registration order", func(t *testing.T) {
+		// A reference to an entry later in name order still resolves (no dependence on expansion
+		// order)
 		b, err := NewBuilder(map[string]string{
 			"a_mode":  `{{template "z_part" .}}`,
 			"z_part":  "後ろにある部品",
@@ -49,7 +50,7 @@ func TestBuilder_Expand(t *testing.T) {
 		assert.Equal(t, "後ろにある部品", got)
 	})
 
-	t.Run("引数なしの{{template}}も展開される", func(t *testing.T) {
+	t.Run("expands {{template}} without an argument", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_p":   "部品",
 			"mode": `[{{template "_p"}}]`,
@@ -61,7 +62,7 @@ func TestBuilder_Expand(t *testing.T) {
 		assert.Equal(t, "[部品]", got)
 	})
 
-	t.Run("Expandの結果はBuildの出力と整合する", func(t *testing.T) {
+	t.Run("Expand agrees with Build output", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_greeting": "こんにちは、{{.Name}}さん",
 			"main":      `{{template "_greeting" .}}！`,
@@ -72,7 +73,7 @@ func TestBuilder_Expand(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "こんにちは、{{.Name}}さん！", expanded)
 
-		// 展開結果をそのまま実行すると Build と同じ出力になる
+		// Executing the expanded result as is gives the same output as Build
 		data := struct{ Name string }{Name: "太郎"}
 		built, err := b.Build("main", data)
 		require.NoError(t, err)
@@ -83,7 +84,7 @@ func TestBuilder_Expand(t *testing.T) {
 		assert.Equal(t, built, sb.String())
 	})
 
-	t.Run("partialを持たないモードはそのまま返る", func(t *testing.T) {
+	t.Run("mode without partials is returned as is", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{"plain": "ただの本文 {{.X}}"})
 		require.NoError(t, err)
 
@@ -94,7 +95,7 @@ func TestBuilder_Expand(t *testing.T) {
 }
 
 func TestBuilder_Expand_ControlFlow(t *testing.T) {
-	t.Run("ifの内側の参照も展開される", func(t *testing.T) {
+	t.Run("expands references inside if", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_p":   "部品",
 			"mode": `{{if .Flag}}{{template "_p" .}}{{else}}なし{{end}}`,
@@ -106,7 +107,7 @@ func TestBuilder_Expand_ControlFlow(t *testing.T) {
 		assert.Equal(t, "{{if .Flag}}部品{{else}}なし{{end}}", got)
 	})
 
-	t.Run("else節の内側の参照も展開される", func(t *testing.T) {
+	t.Run("expands references inside else", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_p":   "部品",
 			"mode": `{{if .Flag}}あり{{else}}{{template "_p" .}}{{end}}`,
@@ -118,7 +119,7 @@ func TestBuilder_Expand_ControlFlow(t *testing.T) {
 		assert.Equal(t, "{{if .Flag}}あり{{else}}部品{{end}}", got)
 	})
 
-	t.Run("rangeの内側の参照も展開される", func(t *testing.T) {
+	t.Run("expands references inside range", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_row":  "- {{.}}",
 			"table": `{{range .Items}}{{template "_row" .}}{{end}}`,
@@ -130,7 +131,7 @@ func TestBuilder_Expand_ControlFlow(t *testing.T) {
 		assert.Equal(t, "{{range .Items}}- {{.}}{{end}}", got)
 	})
 
-	t.Run("withの内側の参照も展開される", func(t *testing.T) {
+	t.Run("expands references inside with", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_p":   "部品",
 			"mode": `{{with .Sub}}{{template "_p" .}}{{end}}`,
@@ -144,7 +145,7 @@ func TestBuilder_Expand_ControlFlow(t *testing.T) {
 }
 
 func TestBuilder_Expand_Errors(t *testing.T) {
-	t.Run("循環参照は検出される", func(t *testing.T) {
+	t.Run("detects cycles", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_a":   `A{{template "_b" .}}`,
 			"_b":   `B{{template "_a" .}}`,
@@ -157,7 +158,7 @@ func TestBuilder_Expand_Errors(t *testing.T) {
 		assert.ErrorIs(t, err, ErrCyclicTemplate)
 	})
 
-	t.Run("自己参照も検出される", func(t *testing.T) {
+	t.Run("detects self-reference", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_self": `{{template "_self" .}}`,
 			"mode":  `{{template "_self" .}}`,
@@ -169,8 +170,8 @@ func TestBuilder_Expand_Errors(t *testing.T) {
 		assert.ErrorIs(t, err, ErrCyclicTemplate)
 	})
 
-	t.Run("引数付きの参照は展開せずエラーにする", func(t *testing.T) {
-		// 展開すると部品内の . が別のものを指してしまうため
+	t.Run("reference with an argument is an error", func(t *testing.T) {
+		// Expanding it would make the . inside the partial point at something else
 		b, err := NewBuilder(map[string]string{
 			"_p":   "{{.Label}}",
 			"mode": `{{template "_p" .Item}}`,
@@ -183,7 +184,7 @@ func TestBuilder_Expand_Errors(t *testing.T) {
 		assert.Contains(t, err.Error(), "_p")
 	})
 
-	t.Run("未知のモードはErrUnknownMode", func(t *testing.T) {
+	t.Run("unknown mode is ErrUnknownMode", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{"mode": "本文"})
 		require.NoError(t, err)
 
@@ -191,7 +192,7 @@ func TestBuilder_Expand_Errors(t *testing.T) {
 		assert.ErrorIs(t, err, ErrUnknownMode)
 	})
 
-	t.Run("partialは直接展開できない", func(t *testing.T) {
+	t.Run("partial cannot be expanded directly", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_p":   "部品",
 			"mode": "本文",
@@ -202,7 +203,7 @@ func TestBuilder_Expand_Errors(t *testing.T) {
 		assert.ErrorIs(t, err, ErrUnknownMode)
 	})
 
-	t.Run("未定義の参照はErrUnknownMode", func(t *testing.T) {
+	t.Run("undefined reference is ErrUnknownMode", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"mode": `{{template "_missing" .}}`,
 		})
@@ -213,7 +214,7 @@ func TestBuilder_Expand_Errors(t *testing.T) {
 		assert.ErrorIs(t, err, ErrUnknownMode)
 	})
 
-	t.Run("WithDefaultModeのフォールバックが効く", func(t *testing.T) {
+	t.Run("WithDefaultMode fallback applies", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"default": "既定の本文",
 			"other":   "別の本文",
@@ -226,8 +227,8 @@ func TestBuilder_Expand_Errors(t *testing.T) {
 	})
 }
 
-// TestBuilder_Expand_DoesNotMutate は、Expand が元の構文木を書き換えないことを確認します。
-// 書き換えてしまうと以降の Build が壊れます。
+// TestBuilder_Expand_DoesNotMutate confirms that Expand does not rewrite the original parse trees.
+// If it did, later Build calls would break.
 func TestBuilder_Expand_DoesNotMutate(t *testing.T) {
 	b, err := NewBuilder(map[string]string{
 		"_p":   "部品({{.X}})",
@@ -248,14 +249,14 @@ func TestBuilder_Expand_DoesNotMutate(t *testing.T) {
 	after, err := b.Build("mode", data)
 	require.NoError(t, err)
 
-	assert.Equal(t, before, after, "Expand の呼び出しが Build の結果を変えてはいけません")
+	assert.Equal(t, before, after, "calling Expand must not change what Build returns")
 	assert.Equal(t, "前 部品(値) 後", after)
 }
 
-// TestBuilder_Expand_NestedErrorPaths は、入れ子の内部で起きたエラーが
-// 呼び出し元まで伝播することを確認します。
+// TestBuilder_Expand_NestedErrorPaths confirms that an error raised deep inside a nesting
+// propagates to the caller.
 func TestBuilder_Expand_NestedErrorPaths(t *testing.T) {
-	t.Run("ifの内側の未定義参照", func(t *testing.T) {
+	t.Run("undefined reference inside if", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"mode": `{{if .Flag}}{{template "_missing" .}}{{end}}`,
 		})
@@ -265,7 +266,7 @@ func TestBuilder_Expand_NestedErrorPaths(t *testing.T) {
 		assert.ErrorIs(t, err, ErrUnknownMode)
 	})
 
-	t.Run("else節の内側の未定義参照", func(t *testing.T) {
+	t.Run("undefined reference inside else", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"mode": `{{if .Flag}}あり{{else}}{{template "_missing" .}}{{end}}`,
 		})
@@ -275,7 +276,7 @@ func TestBuilder_Expand_NestedErrorPaths(t *testing.T) {
 		assert.ErrorIs(t, err, ErrUnknownMode)
 	})
 
-	t.Run("rangeの内側の引数付き参照", func(t *testing.T) {
+	t.Run("reference with an argument inside range", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_row": "{{.}}",
 			"mode": `{{range .Items}}{{template "_row" .Sub}}{{end}}`,
@@ -286,7 +287,7 @@ func TestBuilder_Expand_NestedErrorPaths(t *testing.T) {
 		assert.ErrorIs(t, err, ErrNotExpandable)
 	})
 
-	t.Run("partialの内側の未定義参照", func(t *testing.T) {
+	t.Run("undefined reference inside a partial", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_outer": `{{template "_missing" .}}`,
 			"mode":   `{{template "_outer" .}}`,
@@ -298,20 +299,20 @@ func TestBuilder_Expand_NestedErrorPaths(t *testing.T) {
 	})
 }
 
-// TestBuilder_Expand_ArgumentForms は、展開できる参照とできない参照の
-// 境界を網羅します。データコンテキストを変えるものだけを拒否します。
+// TestBuilder_Expand_ArgumentForms covers the boundary between references that can and cannot be
+// expanded. Only those that change the data context are rejected.
 func TestBuilder_Expand_ArgumentForms(t *testing.T) {
 	tests := []struct {
 		name       string
 		body       string
 		expandable bool
 	}{
-		{name: "引数なし", body: `{{template "_p"}}`, expandable: true},
-		{name: "ドットのみ", body: `{{template "_p" .}}`, expandable: true},
-		{name: "フィールド指定", body: `{{template "_p" .Item}}`, expandable: false},
-		{name: "リテラル", body: `{{template "_p" "文字列"}}`, expandable: false},
-		{name: "パイプライン", body: `{{template "_p" .A | printf "%v"}}`, expandable: false},
-		{name: "変数宣言つき", body: `{{$x := .A}}{{template "_p" $x}}`, expandable: false},
+		{name: "no argument", body: `{{template "_p"}}`, expandable: true},
+		{name: "dot only", body: `{{template "_p" .}}`, expandable: true},
+		{name: "field argument", body: `{{template "_p" .Item}}`, expandable: false},
+		{name: "literal", body: `{{template "_p" "文字列"}}`, expandable: false},
+		{name: "pipeline", body: `{{template "_p" .A | printf "%v"}}`, expandable: false},
+		{name: "with variable declaration", body: `{{$x := .A}}{{template "_p" $x}}`, expandable: false},
 	}
 
 	for _, tt := range tests {

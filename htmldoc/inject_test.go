@@ -17,8 +17,8 @@ import (
 	"github.com/shouni/go-prompt-kit/htmldoc/renderer"
 )
 
-// TestNew_WithConverter_JSONPipeline は、Markdown以外のConverterを注入して
-// パイプラインを組めることを確認します。
+// TestNew_WithConverter_JSONPipeline confirms that a pipeline can be built by injecting a Converter
+// other than Markdown.
 func TestNew_WithConverter_JSONPipeline(t *testing.T) {
 	tpl := template.Must(template.New("fragment").Parse(
 		`<h1>{{.title}}</h1><p>{{.body}}</p>`))
@@ -35,12 +35,12 @@ func TestNew_WithConverter_JSONPipeline(t *testing.T) {
 
 	got := buf.String()
 	assert.Contains(t, got, `<html lang="en">`)
-	// タイトルはJSONの "title" キーから解決される
+	// The title resolves from the JSON "title" key
 	assert.Contains(t, got, "<title>レビュー結果</title>")
 	assert.Contains(t, got, "<h1>レビュー結果</h1>")
 	assert.Contains(t, got, "<p>本文</p>")
 	assert.Contains(t, got, "body{margin:0}")
-	// 既定のCSSへ差し替わっていること
+	// The default CSS is in place
 	assert.NotContains(t, got, "--color-primary-main")
 }
 
@@ -52,7 +52,7 @@ func TestNew_WithRenderer(t *testing.T) {
 
 	require.NoError(t, doc.Run(io.Discard, "タイトル", []byte("# 見出し\n")))
 
-	assert.True(t, stub.called, "注入したRendererが使用されていません")
+	assert.True(t, stub.called, "the injected Renderer was not used")
 	assert.Equal(t, "タイトル", stub.title)
 }
 
@@ -71,7 +71,7 @@ func TestNew_DefaultTitle(t *testing.T) {
 	doc, err := htmldoc.New(htmldoc.WithDefaultTitle("無題のドキュメント"))
 	require.NoError(t, err)
 
-	// 見出しのない入力なので既定タイトルへフォールバックする
+	// The input has no heading, so it falls back to the default title
 	var buf bytes.Buffer
 	require.NoError(t, doc.Run(&buf, "", []byte("本文のみです。\n")))
 	assert.Contains(t, buf.String(), "<title>無題のドキュメント</title>")
@@ -80,10 +80,10 @@ func TestNew_DefaultTitle(t *testing.T) {
 func TestNew_RendererOptionError(t *testing.T) {
 	_, err := htmldoc.New(htmldoc.WithRendererOptions(renderer.WithTemplateText(`{{.Unclosed`)))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "rendererの初期化エラー")
+	assert.Contains(t, err.Error(), "initialize renderer")
 }
 
-// TestNew_EndToEnd_Markdown は、既定構成でMarkdownから完全なHTMLが生成されることを確認します。
+// TestNew_EndToEnd_Markdown confirms that the default setup generates complete HTML from Markdown.
 func TestNew_EndToEnd_Markdown(t *testing.T) {
 	doc, err := htmldoc.New()
 	require.NoError(t, err)
@@ -93,13 +93,13 @@ func TestNew_EndToEnd_Markdown(t *testing.T) {
 
 	got := buf.String()
 	assert.Contains(t, got, `<html lang="ja-jp">`)
-	// コードブロック内の見出しではなく、実際の見出しがタイトルになる
+	// The actual heading, not the one inside the code block, becomes the title
 	assert.Contains(t, got, "<title>実際のタイトル</title>")
 	assert.Contains(t, got, "<h1>実際のタイトル</h1>")
-	assert.True(t, strings.Contains(got, "<pre>"), "コードブロックが出力されていません")
+	assert.True(t, strings.Contains(got, "<pre>"), "the code block was not output")
 }
 
-// stubRenderer は、呼び出しの有無と引数を記録する ports.Renderer です。
+// stubRenderer is a ports.Renderer that records whether it was called and with what.
 type stubRenderer struct {
 	called bool
 	title  string
@@ -109,7 +109,7 @@ func (s *stubRenderer) Render(w io.Writer, bodyHTML []byte, _, title string) err
 	s.called = true
 	s.title = title
 	if _, err := w.Write(bodyHTML); err != nil {
-		return errors.New("書き込みに失敗")
+		return errors.New("write failed")
 	}
 	return nil
 }

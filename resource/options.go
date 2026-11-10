@@ -2,14 +2,14 @@ package resource
 
 import "strings"
 
-// config は Load の動作設定を保持します。
+// config holds the settings for Load.
 type config struct {
 	recursive  bool
 	extensions []string
 	prefix     string
 }
 
-// newConfig は、オプションを反映した設定を返します。
+// newConfig returns the settings with the options applied.
 func newConfig(opts ...Option) *config {
 	cfg := &config{}
 	for _, opt := range opts {
@@ -18,30 +18,28 @@ func newConfig(opts ...Option) *config {
 	return cfg
 }
 
-// Option は Load の動作を変更する関数型です。
+// Option is a function that changes how Load behaves.
 type Option func(*config)
 
-// WithPrefix は、読み込む対象を指定した接頭辞を持つファイルだけに限定します。
-// 接頭辞はモード名から取り除かれます（"prompt_review.md" は接頭辞 "prompt_" で "review" になります）。
-// 指定しない場合はすべてのファイルが対象で、モード名は拡張子を除いたファイル名です。
+// WithPrefix limits loading to files with the given prefix. The prefix is removed from the mode
+// name ("prompt_review.md" with prefix "prompt_" becomes "review"). Without it every file is
+// loaded, and the mode name is the file name without its extension.
 func WithPrefix(prefix string) Option {
 	return func(c *config) {
 		c.prefix = prefix
 	}
 }
 
-// WithRecursive は、サブディレクトリを再帰的に走査します。
-// このときモード名は rootDir からの相対パスから拡張子を除いたものになります
-// （例: rootDir が "prompts" で "prompts/en/rock.md" なら "en/rock"）。
+// WithRecursive walks subdirectories recursively. The mode name is then the path relative to
+// rootDir without its extension (e.g. "prompts/en/rock.md" with rootDir "prompts" gives "en/rock").
 func WithRecursive() Option {
 	return func(c *config) {
 		c.recursive = true
 	}
 }
 
-// WithExtensions は、読み込む対象を指定した拡張子のファイルだけに限定します。
-// 先頭のドットは省略可能です（".md" と "md" は同じ扱いです）。
-// 指定しない場合はすべての拡張子が対象になります。
+// WithExtensions limits loading to files with the given extensions. The leading dot is optional
+// (".md" and "md" are the same). Without it every extension is loaded.
 func WithExtensions(exts ...string) Option {
 	return func(c *config) {
 		for _, ext := range exts {
@@ -56,7 +54,7 @@ func WithExtensions(exts ...string) Option {
 	}
 }
 
-// matchExtension は、ファイル名が対象の拡張子に一致するかを判定します。
+// matchExtension reports whether a file's extension is one of the targets.
 func (c *config) matchExtension(ext string) bool {
 	if len(c.extensions) == 0 {
 		return true

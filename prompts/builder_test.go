@@ -52,14 +52,14 @@ func TestTemplateBuilder_Build(t *testing.T) {
 	})
 
 	t.Run("Error_TemplateExecutionFailure", func(t *testing.T) {
-		// テンプレートが期待するフィールド（DiffContent）を持たない構造体を渡す
-		// text/template は存在しないフィールド参照でエラーを返すため、それを検証する
+		// Pass a struct without the field the template expects (DiffContent). text/template returns
+		// an error for a reference to a missing field, which is what this verifies
 		data := struct{ WrongField string }{"oops"}
 		result, err := builder.Build("test_mode", data)
 
 		assert.Error(t, err)
-		assert.Equal(t, "", result) // エラー時は空文字が返る実装
-		assert.Contains(t, err.Error(), "プロンプトテンプレートの実行に失敗しました")
+		assert.Equal(t, "", result) // the implementation returns an empty string on error
+		assert.Contains(t, err.Error(), "execute prompt template")
 		assert.Contains(t, err.Error(), "can't evaluate field DiffContent")
 	})
 }

@@ -7,11 +7,10 @@ import (
 	"testing"
 )
 
-// テスト用にモックのRendererを作成するヘルパー関数
-// 実際の assets (embed.FS) がテスト環境でアクセスできない場合を想定し、
-// 直接構造体を生成してテストします。
+// Helper that creates a mock Renderer for tests. It builds the struct directly, assuming the real
+// assets (embed.FS) may not be accessible in the test environment.
 func newTestRenderer() *Renderer {
-	// テスト用のシンプルなHTMLテンプレート
+	// A simple HTML template for tests
 	tplText := `<!DOCTYPE html><html lang="{{.Lang}}"><head><title>{{.Title}}</title><style>{{.Style}}</style></head><body>{{.Content}}</body></html>`
 	tpl := template.Must(template.New("template.html").Parse(tplText))
 
@@ -29,10 +28,10 @@ func TestRenderer_Render(t *testing.T) {
 		bodyHTML []byte
 		lang     string
 		title    string
-		contains []string // 出力に含まれるべき文字列
+		contains []string // strings the output should contain
 	}{
 		{
-			name:     "正常系: 標準的なレンダリング",
+			name:     "success: standard rendering",
 			bodyHTML: []byte("<p>Hello World</p>"),
 			lang:     "ja",
 			title:    "テストタイトル",
@@ -44,7 +43,7 @@ func TestRenderer_Render(t *testing.T) {
 			},
 		},
 		{
-			name:     "空のコンテンツ",
+			name:     "empty content",
 			bodyHTML: []byte(""),
 			lang:     "en",
 			title:    "Empty Page",
@@ -54,12 +53,12 @@ func TestRenderer_Render(t *testing.T) {
 			},
 		},
 		{
-			name:     "HTMLエスケープがされないことの確認",
+			name:     "content is not HTML-escaped",
 			bodyHTML: []byte("<script>alert('hi')</script>"),
 			lang:     "ja",
 			title:    "XSS Check",
 			contains: []string{
-				"<script>alert('hi')</script>", // template.HTMLなのでエスケープされない
+				"<script>alert('hi')</script>", // not escaped, since it is a template.HTML
 			},
 		},
 	}

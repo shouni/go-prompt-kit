@@ -1,8 +1,8 @@
-// Package resource は、ファイルシステム上のディレクトリからファイルを読み込み、
-// 名前をキーとするマップとして返すユーティリティを提供します。
+// Package resource provides a utility that reads files from a directory on a file system and
+// returns them as a map keyed by name.
 //
-// 対象の絞り込み（接頭辞・拡張子）とサブディレクトリの走査はオプションで指定します。
-// 主な用途は embed.FS からのプロンプト読み込みですが、fs.FS であれば何でも扱えます。
+// Narrowing the targets (prefix, extension) and walking subdirectories are set by options. The main
+// use is loading prompts from an embed.FS, but any fs.FS works.
 package resource
 
 import (
@@ -13,38 +13,37 @@ import (
 	"strings"
 )
 
-// ErrNotDirectory は、rootDir にディレクトリ以外が指定された場合に返されます。
+// ErrNotDirectory is returned when rootDir names something other than a directory.
 var ErrNotDirectory = errors.New("resource: not a directory")
 
-// Load は指定されたファイルシステム内のディレクトリからファイルを読み込み、
-// モード名（既定では拡張子を除いたファイル名）をキーとするマップとして返します。
-// 既定ではサブディレクトリを走査しません。対象の絞り込みと走査方法は
-// WithPrefix / WithExtensions / WithRecursive で変更します。
+// Load reads files from a directory in the given file system and returns them as a map keyed by
+// mode name (by default, the file name without its extension). By default it does not walk
+// subdirectories. WithPrefix / WithExtensions / WithRecursive change the targets and how they are
+// walked.
 //
 //	templates, err := resource.Load(promptFiles, "prompts")
 //	templates, err := resource.Load(promptFiles, "prompts", resource.WithExtensions(".md"))
 func Load(fileSystem fs.FS, rootDir string, opts ...Option) (map[string]string, error) {
 	cfg := newConfig(opts...)
 
-	// fs.WalkDir はファイルを起点にしても走査できてしまうため、
-	// ディレクトリであることを先に確認します。
+	// fs.WalkDir also accepts a file as its starting point, so check first that it is a directory.
 	info, err := fs.Stat(fileSystem, rootDir)
 	if err != nil {
-		return nil, fmt.Errorf("ディレクトリ %s の読み込みに失敗: %w", rootDir, err)
+		return nil, fmt.Errorf("read directory %s: %w", rootDir, err)
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("ディレクトリ %s の読み込みに失敗: %w", rootDir, ErrNotDirectory)
+		return nil, fmt.Errorf("read directory %s: %w", rootDir, ErrNotDirectory)
 	}
 
 	templates := make(map[string]string)
 
 	walkErr := fs.WalkDir(fileSystem, rootDir, func(filePath string, entry fs.DirEntry, err error) error {
 		if err != nil {
-			return fmt.Errorf("ディレクトリ %s の読み込みに失敗: %w", filePath, err)
+			return fmt.Errorf("read directory %s: %w", filePath, err)
 		}
 
 		if entry.IsDir() {
-			// 非再帰の場合、rootDir 直下のサブディレクトリには入りません。
+			// When not recursive, do not enter subdirectories directly under rootDir.
 			if filePath != rootDir && !cfg.recursive {
 				return fs.SkipDir
 			}
@@ -63,11 +62,11 @@ func Load(fileSystem fs.FS, rootDir string, opts ...Option) (map[string]string, 
 
 		content, err := fs.ReadFile(fileSystem, filePath)
 		if err != nil {
-			return fmt.Errorf("ファイル %s の読み込みに失敗: %w", filePath, err)
+			return fmt.Errorf("read file %s: %w", filePath, err)
 		}
 
 		if _, exists := templates[modeName]; exists {
-			return fmt.Errorf("テンプレート名が衝突しています: %s (ファイル: %s)", modeName, filePath)
+			return fmt.Errorf("template name collision: %s (file: %s)", modeName, filePath)
 		}
 		templates[modeName] = string(content)
 
@@ -80,10 +79,9 @@ func Load(fileSystem fs.FS, rootDir string, opts ...Option) (map[string]string, 
 	return templates, nil
 }
 
-// modeNameOf は、ファイルパスからモード名を導出します。
-// rootDir 直下のファイルはファイル名から接頭辞と拡張子を除いたもの、
-// サブディレクトリ内のファイルは rootDir からの相対パスを保った名前になります
-// （例: rootDir="prompts", filePath="prompts/en/rock.md" なら "en/rock"）。
+// modeNameOf derives the mode name from a file path. A file directly under rootDir gets its file
+// name without the prefix and extension; a file in a subdirectory keeps its path relative to
+// rootDir (e.g. rootDir="prompts", filePath="prompts/en/rock.md" gives "en/rock").
 func modeNameOf(rootDir, filePath, prefix string) string {
 	relPath := filePath
 	if rootDir != "." {

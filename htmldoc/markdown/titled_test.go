@@ -8,21 +8,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConverter_ConvertWithTitle は、まとめて解析する経路の結果が
-// Convert と ExtractTitle をそれぞれ呼んだ場合と一致することを確認します。
-// ports.TitledConverter がこの一致を約束しているため、ずれると
-// タイトルの指定有無だけで出力が変わります。
+// TestConverter_ConvertWithTitle confirms that the single-parse path gives the same result as
+// calling Convert and ExtractTitle separately. ports.TitledConverter promises this, so a drift
+// would change the output merely depending on whether a title was given.
 func TestConverter_ConvertWithTitle(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
 	}{
-		{name: "見出しあり", input: "# タイトル\n\n本文です。\n"},
-		{name: "見出しなし", input: "本文だけの文書です。\n"},
-		{name: "setext見出し", input: "タイトル\n=====\n\n本文です。\n"},
-		{name: "コードブロック内の見出し記号", input: "```\n# これは見出しではない\n```\n\n## 本当の見出し\n"},
-		{name: "装飾を含む見出し", input: "# **強調**と[link](https://example.com)\n"},
-		{name: "空入力", input: ""},
+		{name: "with heading", input: "# タイトル\n\n本文です。\n"},
+		{name: "without heading", input: "本文だけの文書です。\n"},
+		{name: "setext heading", input: "タイトル\n=====\n\n本文です。\n"},
+		{name: "heading marker in a code block", input: "```\n# これは見出しではない\n```\n\n## 本当の見出し\n"},
+		{name: "heading with inline markup", input: "# **強調**と[link](https://example.com)\n"},
+		{name: "empty input", input: ""},
 	}
 
 	c := New()
@@ -43,10 +42,9 @@ func TestConverter_ConvertWithTitle(t *testing.T) {
 	}
 }
 
-// TestConverter_ImplementsTitledConverter は、最適化された経路が
-// 実際に選ばれる形になっていることを確認します。
-// インターフェースを満たさなくなっても Document は動いてしまい、
-// 気付けるのは黙って2回解析に戻ったあとだからです。
+// TestConverter_ImplementsTitledConverter confirms that the optimized path is actually in a shape
+// that gets chosen. Document keeps working even when the interface is no longer satisfied, so the
+// drift would only be noticed after it had silently gone back to parsing twice.
 func TestConverter_ImplementsTitledConverter(t *testing.T) {
 	var titled ports.TitledConverter = New()
 

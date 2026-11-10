@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNewBuilder_RejectsLoadOnlyOptions は、読み込み時のみ有効なオプションを
-// NewBuilder が受け付けないことを確認します。
+// TestNewBuilder_RejectsLoadOnlyOptions confirms that NewBuilder does not accept options that are
+// only valid while loading.
 //
-// 黙って無視すると、絞り込んだつもりのまま全エントリが登録され、
-// しかもコンパイルも実行も通ってしまいます。
+// Ignored silently, every entry would be registered while the caller believes it filtered them, and
+// it would still compile and run.
 func TestNewBuilder_RejectsLoadOnlyOptions(t *testing.T) {
 	templates := map[string]string{"greet": "こんにちは"}
 
@@ -33,11 +33,11 @@ func TestNewBuilder_RejectsLoadOnlyOptions(t *testing.T) {
 
 			require.Error(t, err)
 			assert.ErrorIs(t, err, ErrLoadOnlyOption)
-			assert.Contains(t, err.Error(), tt.wantName, "どのオプションが問題かを示すべきです")
+			assert.Contains(t, err.Error(), tt.wantName, "should name the offending option")
 		})
 	}
 
-	t.Run("複数指定した場合はすべて報告する", func(t *testing.T) {
+	t.Run("reports every one of several", func(t *testing.T) {
 		_, err := NewBuilder(templates, WithRecursive(), WithExtensions(".md"))
 
 		require.ErrorIs(t, err, ErrLoadOnlyOption)
@@ -45,7 +45,7 @@ func TestNewBuilder_RejectsLoadOnlyOptions(t *testing.T) {
 		assert.Contains(t, err.Error(), "WithExtensions")
 	})
 
-	t.Run("構築時のオプションはそのまま使える", func(t *testing.T) {
+	t.Run("builder options still apply", func(t *testing.T) {
 		_, err := NewBuilder(templates,
 			WithDefaultMode("greet"),
 			WithPartialPrefix("#"),
@@ -54,8 +54,8 @@ func TestNewBuilder_RejectsLoadOnlyOptions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	// LoadFS は読み込み専用オプションを自身で消費するため、検査に引っかかりません。
-	t.Run("LoadFS では受け付ける", func(t *testing.T) {
+	// LoadFS consumes the load-only options itself, so they do not trip the check.
+	t.Run("LoadFS accepts it", func(t *testing.T) {
 		mockFS := fstest.MapFS{
 			"prompts/prompt_greet.md": &fstest.MapFile{Data: []byte("こんにちは")},
 			"prompts/skip.txt":        &fstest.MapFile{Data: []byte("対象外")},
@@ -75,13 +75,13 @@ func TestIsPartial(t *testing.T) {
 		prefix string
 		want   bool
 	}{
-		{name: "既定の接頭辞", entry: "_output", prefix: DefaultPartialPrefix, want: true},
-		{name: "モード名", entry: "review", prefix: DefaultPartialPrefix, want: false},
-		{name: "再帰読み込みのパス形式", entry: "en/_output", prefix: DefaultPartialPrefix, want: true},
-		{name: "パス形式のモード名", entry: "en/review", prefix: DefaultPartialPrefix, want: false},
-		{name: "ディレクトリ名だけが接頭辞に一致", entry: "_shared/review", prefix: DefaultPartialPrefix, want: false},
-		{name: "独自の接頭辞", entry: "compose_structure", prefix: "compose_", want: true},
-		{name: "接頭辞が空なら判定しない", entry: "_output", prefix: "", want: false},
+		{name: "default prefix", entry: "_output", prefix: DefaultPartialPrefix, want: true},
+		{name: "mode name", entry: "review", prefix: DefaultPartialPrefix, want: false},
+		{name: "recursive path form", entry: "en/_output", prefix: DefaultPartialPrefix, want: true},
+		{name: "mode name in path form", entry: "en/review", prefix: DefaultPartialPrefix, want: false},
+		{name: "only the directory matches the prefix", entry: "_shared/review", prefix: DefaultPartialPrefix, want: false},
+		{name: "custom prefix", entry: "compose_structure", prefix: "compose_", want: true},
+		{name: "empty prefix matches nothing", entry: "_output", prefix: "", want: false},
 	}
 
 	for _, tt := range tests {
@@ -91,9 +91,9 @@ func TestIsPartial(t *testing.T) {
 	}
 }
 
-// TestIsPartial_MatchesBuilder は、公開した IsPartial の判定が
-// Builder が Modes から除外する規則と一致することを確認します。
-// 判定が二重に書かれている以上、ずれれば利用側の一覧と Build の対象が食い違います。
+// TestIsPartial_MatchesBuilder confirms that the exported IsPartial agrees with the rule Builder
+// uses to exclude entries from Modes. As long as the predicate is written twice, a drift would make
+// a consumer's list disagree with what Build accepts.
 func TestIsPartial_MatchesBuilder(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"prompts/review.md":     &fstest.MapFile{Data: []byte("レビュー")},
@@ -107,6 +107,6 @@ func TestIsPartial_MatchesBuilder(t *testing.T) {
 
 	for _, entry := range []string{"review", "_output", "en/rock", "en/_output"} {
 		assert.Equal(t, !IsPartial(entry, DefaultPartialPrefix), b.Has(entry),
-			"%s の partial 判定が Builder と一致しません", entry)
+			"partial detection for %s disagrees with Builder", entry)
 	}
 }

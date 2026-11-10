@@ -16,22 +16,22 @@ func TestLoad(t *testing.T) {
 		"other_dir/prompt_unused.md": {Data: []byte("Wrong Dir")},
 	}
 
-	t.Run("正常系: プロンプトが正しくロードされること", func(t *testing.T) {
+	t.Run("success: loads prompts", func(t *testing.T) {
 		templates, err := Load(mockFS, "prompts", WithPrefix("prompt_"))
 
-		// Load自体の失敗は致命的なので require を使用
-		require.NoError(t, err, "Load に失敗しました")
+		// A failing Load is fatal, so use require
+		require.NoError(t, err, "Load failed")
 
-		// アサーションの統一
-		assert.Len(t, templates, 2, "期待されるテンプレート数は 2 です")
-		assert.Equal(t, "Review Template", templates["review"], "review の内容が不正です")
-		assert.Equal(t, "Release Template", templates["release"], "release の内容が不正です")
+		// Consistent assertions
+		assert.Len(t, templates, 2, "expected 2 templates")
+		assert.Equal(t, "Review Template", templates["review"], "unexpected review content")
+		assert.Equal(t, "Release Template", templates["release"], "unexpected release content")
 	})
 
-	t.Run("異常系: 存在しないディレクトリを指定した場合エラーになること", func(t *testing.T) {
+	t.Run("error: missing directory", func(t *testing.T) {
 		_, err := Load(mockFS, "non_existent", WithPrefix("prompt_"))
 
-		// エラーが発生することを検証
-		assert.Error(t, err, "存在しないディレクトリ指定時はエラーが返るべきです")
+		// Verify that an error occurs
+		assert.Error(t, err, "a missing directory should return an error")
 	})
 }
