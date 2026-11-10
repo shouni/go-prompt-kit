@@ -46,14 +46,14 @@ func TestDocument_Defaults(t *testing.T) {
 }
 
 func TestDocument_WithLang(t *testing.T) {
-	t.Run("指定した言語が使用される", func(t *testing.T) {
+	t.Run("uses the given language", func(t *testing.T) {
 		doc, got := newCapturingDocument(t, "", htmldoc.WithLang("en-US"))
 
 		require.NoError(t, doc.Run(io.Discard, "T", []byte("input")))
 		assert.Equal(t, "en-US", got.lang)
 	})
 
-	t.Run("空文字を渡した場合は既定値が維持される", func(t *testing.T) {
+	t.Run("empty string keeps the default", func(t *testing.T) {
 		doc, got := newCapturingDocument(t, "", htmldoc.WithLang(""))
 
 		require.NoError(t, doc.Run(io.Discard, "T", []byte("input")))
@@ -62,28 +62,28 @@ func TestDocument_WithLang(t *testing.T) {
 }
 
 func TestDocument_WithDefaultTitle(t *testing.T) {
-	t.Run("抽出できない場合に指定した既定タイトルが使われる", func(t *testing.T) {
+	t.Run("uses the default title when none is extracted", func(t *testing.T) {
 		doc, got := newCapturingDocument(t, "", htmldoc.WithDefaultTitle("無題"))
 
 		require.NoError(t, doc.Run(io.Discard, "", []byte("input")))
 		assert.Equal(t, "無題", got.title)
 	})
 
-	t.Run("抽出できる場合は抽出結果が優先される", func(t *testing.T) {
+	t.Run("extracted title wins", func(t *testing.T) {
 		doc, got := newCapturingDocument(t, "抽出タイトル", htmldoc.WithDefaultTitle("無題"))
 
 		require.NoError(t, doc.Run(io.Discard, "", []byte("input")))
 		assert.Equal(t, "抽出タイトル", got.title)
 	})
 
-	t.Run("引数指定が最優先される", func(t *testing.T) {
+	t.Run("argument wins over everything", func(t *testing.T) {
 		doc, got := newCapturingDocument(t, "抽出タイトル", htmldoc.WithDefaultTitle("無題"))
 
 		require.NoError(t, doc.Run(io.Discard, "引数タイトル", []byte("input")))
 		assert.Equal(t, "引数タイトル", got.title)
 	})
 
-	t.Run("空文字を渡した場合は既定値が維持される", func(t *testing.T) {
+	t.Run("empty string keeps the default", func(t *testing.T) {
 		doc, got := newCapturingDocument(t, "", htmldoc.WithDefaultTitle(""))
 
 		require.NoError(t, doc.Run(io.Discard, "", []byte("input")))

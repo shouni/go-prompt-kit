@@ -21,7 +21,7 @@ type modeInfo struct {
 }
 
 func TestDecode(t *testing.T) {
-	t.Run("front matter を構造体へ読み取る", func(t *testing.T) {
+	t.Run("decodes front matter into a struct", func(t *testing.T) {
 		var got modeInfo
 		err := frontmatter.Decode(`{"direction":"技術解説","use_when":"仕様を説明するとき"}`, &got, json.Unmarshal)
 
@@ -29,7 +29,7 @@ func TestDecode(t *testing.T) {
 		assert.Equal(t, modeInfo{Direction: "技術解説", UseWhen: "仕様を説明するとき"}, got)
 	})
 
-	t.Run("空の front matter は何もせず成功する", func(t *testing.T) {
+	t.Run("empty front matter succeeds without decoding", func(t *testing.T) {
 		got := modeInfo{Direction: "既存の値"}
 		err := frontmatter.Decode("", &got, json.Unmarshal)
 
@@ -37,7 +37,7 @@ func TestDecode(t *testing.T) {
 		assert.Equal(t, "既存の値", got.Direction, "the value was overwritten")
 	})
 
-	t.Run("空白だけの front matter も空として扱う", func(t *testing.T) {
+	t.Run("whitespace-only front matter counts as empty", func(t *testing.T) {
 		var got modeInfo
 		err := frontmatter.Decode(" \n\t\n", &got, json.Unmarshal)
 
@@ -45,7 +45,7 @@ func TestDecode(t *testing.T) {
 		assert.Zero(t, got)
 	})
 
-	t.Run("解析に失敗した場合はエラーを返す", func(t *testing.T) {
+	t.Run("returns an error when parsing fails", func(t *testing.T) {
 		var got modeInfo
 		err := frontmatter.Decode(`{"direction":`, &got, json.Unmarshal)
 
@@ -53,7 +53,7 @@ func TestDecode(t *testing.T) {
 		assert.Contains(t, err.Error(), "parse front matter")
 	})
 
-	t.Run("解析関数のエラーを包んで返す", func(t *testing.T) {
+	t.Run("wraps the parse function's error", func(t *testing.T) {
 		sentinel := errors.New("parser-specific failure")
 		fail := func([]byte, any) error { return sentinel }
 
@@ -62,14 +62,14 @@ func TestDecode(t *testing.T) {
 		assert.ErrorIs(t, err, sentinel)
 	})
 
-	t.Run("解析関数が無い場合はエラーを返す", func(t *testing.T) {
+	t.Run("returns an error without a parse function", func(t *testing.T) {
 		err := frontmatter.Decode(`{"direction":"技術解説"}`, &modeInfo{}, nil)
 
 		assert.ErrorIs(t, err, frontmatter.ErrNoUnmarshalFunc)
 	})
 
 	// Empty data would hide a wiring mistake, so the check runs whatever the front matter holds.
-	t.Run("front matter が空でも解析関数の指定漏れは検出する", func(t *testing.T) {
+	t.Run("detects a missing parse function even with empty front matter", func(t *testing.T) {
 		err := frontmatter.Decode("", &modeInfo{}, nil)
 
 		assert.ErrorIs(t, err, frontmatter.ErrNoUnmarshalFunc)
@@ -77,35 +77,35 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecodeAs(t *testing.T) {
-	t.Run("front matter を T として返す", func(t *testing.T) {
+	t.Run("returns front matter as T", func(t *testing.T) {
 		got, err := frontmatter.DecodeAs[modeInfo](`{"direction":"技術解説"}`, json.Unmarshal)
 
 		require.NoError(t, err)
 		assert.Equal(t, modeInfo{Direction: "技術解説"}, got)
 	})
 
-	t.Run("空の front matter はゼロ値を返す", func(t *testing.T) {
+	t.Run("empty front matter returns the zero value", func(t *testing.T) {
 		got, err := frontmatter.DecodeAs[modeInfo]("", json.Unmarshal)
 
 		require.NoError(t, err)
 		assert.Zero(t, got)
 	})
 
-	t.Run("解析に失敗した場合はゼロ値とエラーを返す", func(t *testing.T) {
+	t.Run("returns the zero value and an error when parsing fails", func(t *testing.T) {
 		got, err := frontmatter.DecodeAs[modeInfo](`{"direction":`, json.Unmarshal)
 
 		require.Error(t, err)
 		assert.Zero(t, got, "a partially read value was returned on failure")
 	})
 
-	t.Run("解析関数が無い場合はエラーを返す", func(t *testing.T) {
+	t.Run("returns an error without a parse function", func(t *testing.T) {
 		got, err := frontmatter.DecodeAs[modeInfo](`{"direction":"技術解説"}`, nil)
 
 		assert.ErrorIs(t, err, frontmatter.ErrNoUnmarshalFunc)
 		assert.Zero(t, got)
 	})
 
-	t.Run("Decode と同じ結果になる", func(t *testing.T) {
+	t.Run("matches Decode", func(t *testing.T) {
 		const front = `{"direction":"技術解説","sections":["a","b"]}`
 
 		var want modeInfo
@@ -119,7 +119,7 @@ func TestDecodeAs(t *testing.T) {
 }
 
 func TestDecodeMap(t *testing.T) {
-	t.Run("キーごとに読み取る", func(t *testing.T) {
+	t.Run("decodes per key", func(t *testing.T) {
 		fronts := map[string]string{
 			"tech_solo": `{"direction":"技術解説","sections":["Intro","Body"]}`,
 			"news":      `{"direction":"時事"}`,
@@ -134,7 +134,7 @@ func TestDecodeMap(t *testing.T) {
 		}, got)
 	})
 
-	t.Run("front matter を持たないエントリはゼロ値で残る", func(t *testing.T) {
+	t.Run("entries without front matter stay zero", func(t *testing.T) {
 		fronts := map[string]string{
 			"tech_solo": `{"direction":"技術解説"}`,
 			"plain":     "",
@@ -147,7 +147,7 @@ func TestDecodeMap(t *testing.T) {
 		assert.Zero(t, got["plain"])
 	})
 
-	t.Run("失敗したキー名をエラーに含める", func(t *testing.T) {
+	t.Run("error names the failed keys", func(t *testing.T) {
 		fronts := map[string]string{
 			"tech_solo": `{"direction":"技術解説"}`,
 			"broken":    `{"direction":`,
@@ -161,7 +161,7 @@ func TestDecodeMap(t *testing.T) {
 
 	// Confirms that with several broken entries the reported key does not change between runs. Left
 	// to map iteration order, a fixed error would appear to recur on another key.
-	t.Run("報告するキーは名前順で安定している", func(t *testing.T) {
+	t.Run("reported keys are stable in name order", func(t *testing.T) {
 		fronts := map[string]string{
 			"aaa": `{"direction":`,
 			"mmm": `{"direction":`,
@@ -176,13 +176,13 @@ func TestDecodeMap(t *testing.T) {
 		}
 	})
 
-	t.Run("解析関数が無い場合はエラーを返す", func(t *testing.T) {
+	t.Run("returns an error without a parse function", func(t *testing.T) {
 		_, err := frontmatter.DecodeMap[modeInfo](map[string]string{"a": ""}, nil)
 
 		assert.ErrorIs(t, err, frontmatter.ErrNoUnmarshalFunc)
 	})
 
-	t.Run("空の入力でも空のマップを返す", func(t *testing.T) {
+	t.Run("empty input returns an empty map", func(t *testing.T) {
 		got, err := frontmatter.DecodeMap[modeInfo](nil, json.Unmarshal)
 
 		require.NoError(t, err)

@@ -28,7 +28,7 @@ func TestNew_Defaults(t *testing.T) {
 }
 
 func TestNew_WithCSS(t *testing.T) {
-	t.Run("任意のCSSへ差し替えられる", func(t *testing.T) {
+	t.Run("replaces the CSS", func(t *testing.T) {
 		r, err := New(WithCSS("body { color: rebeccapurple; }"))
 		require.NoError(t, err)
 
@@ -41,7 +41,7 @@ func TestNew_WithCSS(t *testing.T) {
 		assert.NotContains(t, got, "--color-primary-main")
 	})
 
-	t.Run("空文字を渡すとスタイルなしになる", func(t *testing.T) {
+	t.Run("empty string means no style", func(t *testing.T) {
 		r, err := New(WithCSS(""))
 		require.NoError(t, err)
 
@@ -53,7 +53,7 @@ func TestNew_WithCSS(t *testing.T) {
 }
 
 func TestNew_WithTemplateText(t *testing.T) {
-	t.Run("任意のテンプレートへ差し替えられる", func(t *testing.T) {
+	t.Run("replaces the template", func(t *testing.T) {
 		r, err := New(
 			WithTemplateText(`<article lang="{{.Lang}}"><h1>{{.Title}}</h1>{{.Content}}</article>`),
 			WithCSS("ignored"),
@@ -69,7 +69,7 @@ func TestNew_WithTemplateText(t *testing.T) {
 		assert.NotContains(t, got, "ignored")
 	})
 
-	t.Run("パースに失敗した場合はエラーを返す", func(t *testing.T) {
+	t.Run("returns an error when parsing fails", func(t *testing.T) {
 		_, err := New(WithTemplateText(`{{.Unclosed`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "parse HTML template")
@@ -77,7 +77,7 @@ func TestNew_WithTemplateText(t *testing.T) {
 }
 
 func TestNew_WithTemplate(t *testing.T) {
-	t.Run("パース済みテンプレートを渡せる", func(t *testing.T) {
+	t.Run("accepts a parsed template", func(t *testing.T) {
 		tpl := template.Must(template.New("custom").Parse(`{{.Title}}|{{.Content}}`))
 
 		r, err := New(WithTemplate(tpl))
@@ -88,7 +88,7 @@ func TestNew_WithTemplate(t *testing.T) {
 		assert.Equal(t, "T|<b>b</b>", buf.String())
 	})
 
-	t.Run("nilを渡した場合はエラーを返す", func(t *testing.T) {
+	t.Run("returns an error for nil", func(t *testing.T) {
 		_, err := New(WithTemplate(nil))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "template is nil")
@@ -96,7 +96,7 @@ func TestNew_WithTemplate(t *testing.T) {
 }
 
 func TestRenderer_Render_Error(t *testing.T) {
-	t.Run("テンプレート実行に失敗した場合はエラーを返す", func(t *testing.T) {
+	t.Run("returns an error when execution fails", func(t *testing.T) {
 		// Reference a field that TemplateData does not have
 		r, err := New(WithTemplateText(`{{.DoesNotExist}}`))
 		require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestRenderer_Render_Error(t *testing.T) {
 		assert.Contains(t, err.Error(), "execute HTML template")
 	})
 
-	t.Run("書き込み先がエラーを返す場合", func(t *testing.T) {
+	t.Run("writer fails", func(t *testing.T) {
 		r, err := New()
 		require.NoError(t, err)
 
@@ -141,7 +141,7 @@ func TestRenderer_Render_EscapesTitle(t *testing.T) {
 }
 
 func TestNew_WithExtraCSS(t *testing.T) {
-	t.Run("既定CSSの後ろへ連結される", func(t *testing.T) {
+	t.Run("appended after the default CSS", func(t *testing.T) {
 		r, err := New(WithExtraCSS(".finding { color: red; }"))
 		require.NoError(t, err)
 
@@ -157,7 +157,7 @@ func TestNew_WithExtraCSS(t *testing.T) {
 		assert.Less(t, strings.Index(got, "--color-primary-main"), strings.Index(got, ".finding"))
 	})
 
-	t.Run("style ブロックは1つだけになる", func(t *testing.T) {
+	t.Run("single style block", func(t *testing.T) {
 		r, err := New(WithExtraCSS("body { color: red; }"))
 		require.NoError(t, err)
 
@@ -167,7 +167,7 @@ func TestNew_WithExtraCSS(t *testing.T) {
 		assert.Equal(t, 1, strings.Count(buf.String(), "<style>"))
 	})
 
-	t.Run("WithCSSと併用すると指定した土台の後ろへ足される", func(t *testing.T) {
+	t.Run("with WithCSS appends after the given base", func(t *testing.T) {
 		r, err := New(
 			WithCSS("body { margin: 0; }"),
 			WithExtraCSS(".x { color: blue; }"),
@@ -184,7 +184,7 @@ func TestNew_WithExtraCSS(t *testing.T) {
 		assert.Less(t, strings.Index(got, "body { margin: 0; }"), strings.Index(got, ".x {"))
 	})
 
-	t.Run("複数回指定すると指定順に連結される", func(t *testing.T) {
+	t.Run("multiple calls append in order", func(t *testing.T) {
 		r, err := New(
 			WithCSS("/*base*/"),
 			WithExtraCSS(".a {}"),
@@ -200,7 +200,7 @@ func TestNew_WithExtraCSS(t *testing.T) {
 		assert.Less(t, strings.Index(got, ".a {}"), strings.Index(got, ".b {}"))
 	})
 
-	t.Run("空文字は無視される", func(t *testing.T) {
+	t.Run("empty string is ignored", func(t *testing.T) {
 		r, err := New(WithCSS("body{}"), WithExtraCSS(""))
 		require.NoError(t, err)
 
@@ -209,7 +209,7 @@ func TestNew_WithExtraCSS(t *testing.T) {
 		assert.Contains(t, buf.String(), "<style>body{}</style>")
 	})
 
-	t.Run("土台が空なら追加分だけになる", func(t *testing.T) {
+	t.Run("empty base leaves only the addition", func(t *testing.T) {
 		r, err := New(WithCSS(""), WithExtraCSS(".only {}"))
 		require.NoError(t, err)
 

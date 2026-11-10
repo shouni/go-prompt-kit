@@ -16,12 +16,12 @@ func TestConverter_ConvertWithTitle(t *testing.T) {
 		name  string
 		input string
 	}{
-		{name: "見出しあり", input: "# タイトル\n\n本文です。\n"},
-		{name: "見出しなし", input: "本文だけの文書です。\n"},
-		{name: "setext見出し", input: "タイトル\n=====\n\n本文です。\n"},
-		{name: "コードブロック内の見出し記号", input: "```\n# これは見出しではない\n```\n\n## 本当の見出し\n"},
-		{name: "装飾を含む見出し", input: "# **強調**と[link](https://example.com)\n"},
-		{name: "空入力", input: ""},
+		{name: "with heading", input: "# タイトル\n\n本文です。\n"},
+		{name: "without heading", input: "本文だけの文書です。\n"},
+		{name: "setext heading", input: "タイトル\n=====\n\n本文です。\n"},
+		{name: "heading marker in a code block", input: "```\n# これは見出しではない\n```\n\n## 本当の見出し\n"},
+		{name: "heading with inline markup", input: "# **強調**と[link](https://example.com)\n"},
+		{name: "empty input", input: ""},
 	}
 
 	c := New()

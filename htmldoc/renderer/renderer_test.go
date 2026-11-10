@@ -31,7 +31,7 @@ func TestRenderer_Render(t *testing.T) {
 		contains []string // strings the output should contain
 	}{
 		{
-			name:     "正常系: 標準的なレンダリング",
+			name:     "success: standard rendering",
 			bodyHTML: []byte("<p>Hello World</p>"),
 			lang:     "ja",
 			title:    "テストタイトル",
@@ -43,7 +43,7 @@ func TestRenderer_Render(t *testing.T) {
 			},
 		},
 		{
-			name:     "空のコンテンツ",
+			name:     "empty content",
 			bodyHTML: []byte(""),
 			lang:     "en",
 			title:    "Empty Page",
@@ -53,7 +53,7 @@ func TestRenderer_Render(t *testing.T) {
 			},
 		},
 		{
-			name:     "HTMLエスケープがされないことの確認",
+			name:     "content is not HTML-escaped",
 			bodyHTML: []byte("<script>alert('hi')</script>"),
 			lang:     "ja",
 			title:    "XSS Check",

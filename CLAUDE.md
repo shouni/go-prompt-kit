@@ -179,7 +179,7 @@ out, _     := builder.Build("summarize", data)
 
 ## Conventions
 
-- **Language**: comments, doc comments, error / log / panic messages and test assertion messages are English (moved from Japanese on 2026-11-10; do not mix Japanese back in). Japanese stays only where it is data: prompt templates and example prompts, Japanese fixtures (AI responses, Markdown/JSON inputs) and the expected HTML they produce. Some `t.Run` subtest names and table `name` fields are still Japanese; they are identifiers, not messages, and may be translated separately.
+- **Language**: comments, doc comments, error / log / panic messages, test assertion messages and subtest names (`t.Run` names and table `name` fields) are English (moved from Japanese on 2026-11-10; do not mix Japanese back in). Japanese stays only where it is data: prompt templates and example prompts, Japanese fixtures (AI responses, Markdown/JSON inputs) and the expected HTML they produce.
 - **`README.md` is English, and `README.ja.md` is its Japanese version.** Update the two together.
 - **Error text**: sentinel errors carry a package prefix (`review: diff is empty`) so a deeply wrapped error still names its origin; the context added by `fmt.Errorf` wrapping follows Go style (lowercase, no trailing punctuation).
 - Options use the functional-option pattern: an `options.go` per package exporting `WithXxx()` returning `Option func(*config)`, applied into an unexported `config` struct that the constructor consumes. Constructors take `opts ...Option` so adding options stays backward compatible.

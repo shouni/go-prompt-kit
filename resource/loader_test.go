@@ -16,7 +16,7 @@ func TestLoad(t *testing.T) {
 		"other_dir/prompt_unused.md": {Data: []byte("Wrong Dir")},
 	}
 
-	t.Run("正常系: プロンプトが正しくロードされること", func(t *testing.T) {
+	t.Run("success: loads prompts", func(t *testing.T) {
 		templates, err := Load(mockFS, "prompts", WithPrefix("prompt_"))
 
 		// A failing Load is fatal, so use require
@@ -28,7 +28,7 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, "Release Template", templates["release"], "unexpected release content")
 	})
 
-	t.Run("異常系: 存在しないディレクトリを指定した場合エラーになること", func(t *testing.T) {
+	t.Run("error: missing directory", func(t *testing.T) {
 		_, err := Load(mockFS, "non_existent", WithPrefix("prompt_"))
 
 		// Verify that an error occurs

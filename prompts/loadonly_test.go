@@ -37,7 +37,7 @@ func TestNewBuilder_RejectsLoadOnlyOptions(t *testing.T) {
 		})
 	}
 
-	t.Run("複数指定した場合はすべて報告する", func(t *testing.T) {
+	t.Run("reports every one of several", func(t *testing.T) {
 		_, err := NewBuilder(templates, WithRecursive(), WithExtensions(".md"))
 
 		require.ErrorIs(t, err, ErrLoadOnlyOption)
@@ -45,7 +45,7 @@ func TestNewBuilder_RejectsLoadOnlyOptions(t *testing.T) {
 		assert.Contains(t, err.Error(), "WithExtensions")
 	})
 
-	t.Run("構築時のオプションはそのまま使える", func(t *testing.T) {
+	t.Run("builder options still apply", func(t *testing.T) {
 		_, err := NewBuilder(templates,
 			WithDefaultMode("greet"),
 			WithPartialPrefix("#"),
@@ -55,7 +55,7 @@ func TestNewBuilder_RejectsLoadOnlyOptions(t *testing.T) {
 	})
 
 	// LoadFS consumes the load-only options itself, so they do not trip the check.
-	t.Run("LoadFS では受け付ける", func(t *testing.T) {
+	t.Run("LoadFS accepts it", func(t *testing.T) {
 		mockFS := fstest.MapFS{
 			"prompts/prompt_greet.md": &fstest.MapFile{Data: []byte("こんにちは")},
 			"prompts/skip.txt":        &fstest.MapFile{Data: []byte("対象外")},
@@ -75,13 +75,13 @@ func TestIsPartial(t *testing.T) {
 		prefix string
 		want   bool
 	}{
-		{name: "既定の接頭辞", entry: "_output", prefix: DefaultPartialPrefix, want: true},
-		{name: "モード名", entry: "review", prefix: DefaultPartialPrefix, want: false},
-		{name: "再帰読み込みのパス形式", entry: "en/_output", prefix: DefaultPartialPrefix, want: true},
-		{name: "パス形式のモード名", entry: "en/review", prefix: DefaultPartialPrefix, want: false},
-		{name: "ディレクトリ名だけが接頭辞に一致", entry: "_shared/review", prefix: DefaultPartialPrefix, want: false},
-		{name: "独自の接頭辞", entry: "compose_structure", prefix: "compose_", want: true},
-		{name: "接頭辞が空なら判定しない", entry: "_output", prefix: "", want: false},
+		{name: "default prefix", entry: "_output", prefix: DefaultPartialPrefix, want: true},
+		{name: "mode name", entry: "review", prefix: DefaultPartialPrefix, want: false},
+		{name: "recursive path form", entry: "en/_output", prefix: DefaultPartialPrefix, want: true},
+		{name: "mode name in path form", entry: "en/review", prefix: DefaultPartialPrefix, want: false},
+		{name: "only the directory matches the prefix", entry: "_shared/review", prefix: DefaultPartialPrefix, want: false},
+		{name: "custom prefix", entry: "compose_structure", prefix: "compose_", want: true},
+		{name: "empty prefix matches nothing", entry: "_output", prefix: "", want: false},
 	}
 
 	for _, tt := range tests {

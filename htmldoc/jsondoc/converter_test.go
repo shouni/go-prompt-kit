@@ -25,17 +25,17 @@ func TestConverter_Convert(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:  "任意のJSON構造をテンプレートに渡す",
+			name:  "passes any JSON structure to the template",
 			input: `{"title":"Title","summary":"Summary"}`,
 			want:  "<h1>Title</h1><p>Summary</p>",
 		},
 		{
-			name:  "空入力",
+			name:  "empty input",
 			input: "",
 			want:  "",
 		},
 		{
-			name:    "不正なJSON",
+			name:    "invalid JSON",
 			input:   `{invalid`,
 			wantErr: true,
 		},
@@ -65,22 +65,22 @@ func TestConverter_ExtractTitle(t *testing.T) {
 		want  string
 	}{
 		{
-			name:  "既定のキー（title）から抽出",
+			name:  "extracts from the default key (title)",
 			input: `{"title":"プロジェクトタイトル"}`,
 			want:  "プロジェクトタイトル",
 		},
 		{
-			name:  "キーが存在しない",
+			name:  "key missing",
 			input: `{"summary":"本文"}`,
 			want:  "",
 		},
 		{
-			name:  "不正なJSON",
+			name:  "invalid JSON",
 			input: `not json`,
 			want:  "",
 		},
 		{
-			name:  "カスタムキーから抽出",
+			name:  "extracts from a custom key",
 			opts:  []Option{WithTitleKey("heading")},
 			input: `{"heading":"カスタムタイトル"}`,
 			want:  "カスタムタイトル",

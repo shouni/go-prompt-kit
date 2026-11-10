@@ -16,7 +16,7 @@ func TestWithFuncs(t *testing.T) {
 		"upper": strings.ToUpper,
 	}
 
-	t.Run("カスタム関数を呼び出せる", func(t *testing.T) {
+	t.Run("calls a custom function", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"list": `{{join .Items ", "}}`,
 		}, WithFuncs(funcs))
@@ -27,7 +27,7 @@ func TestWithFuncs(t *testing.T) {
 		assert.Equal(t, "a, b, c", got)
 	})
 
-	t.Run("partial からもカスタム関数を呼び出せる", func(t *testing.T) {
+	t.Run("partials can call custom functions", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_items": `{{join .Items " / "}}`,
 			"main":   `一覧: {{template "_items" .}}`,
@@ -39,13 +39,13 @@ func TestWithFuncs(t *testing.T) {
 		assert.Equal(t, "一覧: x / y", got)
 	})
 
-	t.Run("未登録の関数は解析時にエラーになる", func(t *testing.T) {
+	t.Run("unregistered function fails at parse time", func(t *testing.T) {
 		_, err := NewBuilder(map[string]string{"list": `{{join .Items ", "}}`})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `function "join" not defined`)
 	})
 
-	t.Run("複数回指定するとマージされる", func(t *testing.T) {
+	t.Run("multiple calls merge", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"m": `{{upper (join .Items "-")}}`,
 		},
@@ -59,7 +59,7 @@ func TestWithFuncs(t *testing.T) {
 		assert.Equal(t, "AB-CD", got)
 	})
 
-	t.Run("空のFuncMapは無視される", func(t *testing.T) {
+	t.Run("empty FuncMap is ignored", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{"m": "内容"}, WithFuncs(nil))
 		require.NoError(t, err)
 
@@ -72,7 +72,7 @@ func TestWithFuncs(t *testing.T) {
 // TestNewBuilder_DuplicateDefinition confirms that the silent overwrite caused by all templates
 // sharing one namespace is detected at construction.
 func TestNewBuilder_DuplicateDefinition(t *testing.T) {
-	t.Run("複数エントリが同名を define した場合はエラー", func(t *testing.T) {
+	t.Run("error when entries define the same name", func(t *testing.T) {
 		_, err := NewBuilder(map[string]string{
 			"a": `{{define "shared"}}Aの定義{{end}}A: {{template "shared" .}}`,
 			"b": `{{define "shared"}}Bの定義{{end}}B: {{template "shared" .}}`,
@@ -85,7 +85,7 @@ func TestNewBuilder_DuplicateDefinition(t *testing.T) {
 		assert.Contains(t, err.Error(), "'b'")
 	})
 
-	t.Run("defineが他エントリのモード名と衝突する場合もエラー", func(t *testing.T) {
+	t.Run("error when define collides with another mode name", func(t *testing.T) {
 		_, err := NewBuilder(map[string]string{
 			"a":      `{{define "review"}}乗っ取り{{end}}本文`,
 			"review": `本来のレビュー`,
@@ -95,7 +95,7 @@ func TestNewBuilder_DuplicateDefinition(t *testing.T) {
 		assert.Contains(t, err.Error(), "'review'")
 	})
 
-	t.Run("1エントリ内でのdefineは正常", func(t *testing.T) {
+	t.Run("define within one entry is fine", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"a": `{{define "shared"}}共通{{end}}A: {{template "shared" .}}`,
 			"b": `B: {{template "shared" .}}`,
@@ -112,7 +112,7 @@ func TestNewBuilder_DuplicateDefinition(t *testing.T) {
 		assert.Equal(t, "B: 共通", gotB)
 	})
 
-	t.Run("参照のみでは衝突とみなされない", func(t *testing.T) {
+	t.Run("reference alone is not a collision", func(t *testing.T) {
 		// Several modes referencing the same partial is normal use
 		_, err := NewBuilder(map[string]string{
 			"_shared": "共通",
@@ -122,7 +122,7 @@ func TestNewBuilder_DuplicateDefinition(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("参照先が後から定義される場合も衝突とみなされない", func(t *testing.T) {
+	t.Run("later definition of a referenced name is not a collision", func(t *testing.T) {
 		// "_z" is processed after "a" in name order
 		b, err := NewBuilder(map[string]string{
 			"a":  `A: {{template "z_partial" .}}`,
@@ -180,7 +180,7 @@ func TestWithDefaultMode(t *testing.T) {
 		"_hidden": "部品",
 	}
 
-	t.Run("未知のモードは既定モードへ委ねられる", func(t *testing.T) {
+	t.Run("unknown mode falls back to the default", func(t *testing.T) {
 		b, err := NewBuilder(templates, WithDefaultMode("default"))
 		require.NoError(t, err)
 
@@ -189,7 +189,7 @@ func TestWithDefaultMode(t *testing.T) {
 		assert.Equal(t, "既定の内容", got)
 	})
 
-	t.Run("空文字も既定モードへ委ねられる", func(t *testing.T) {
+	t.Run("empty string falls back to the default", func(t *testing.T) {
 		b, err := NewBuilder(templates, WithDefaultMode("default"))
 		require.NoError(t, err)
 
@@ -198,7 +198,7 @@ func TestWithDefaultMode(t *testing.T) {
 		assert.Equal(t, "既定の内容", got)
 	})
 
-	t.Run("登録済みのモードはそのまま使われる", func(t *testing.T) {
+	t.Run("registered mode is used as is", func(t *testing.T) {
 		b, err := NewBuilder(templates, WithDefaultMode("default"))
 		require.NoError(t, err)
 
@@ -207,7 +207,7 @@ func TestWithDefaultMode(t *testing.T) {
 		assert.Equal(t, "ロックの内容", got)
 	})
 
-	t.Run("partial名を渡した場合も既定モードへ委ねられる", func(t *testing.T) {
+	t.Run("partial name falls back to the default", func(t *testing.T) {
 		b, err := NewBuilder(templates, WithDefaultMode("default"))
 		require.NoError(t, err)
 
@@ -216,7 +216,7 @@ func TestWithDefaultMode(t *testing.T) {
 		assert.Equal(t, "既定の内容", got)
 	})
 
-	t.Run("未指定ならErrUnknownMode", func(t *testing.T) {
+	t.Run("ErrUnknownMode without a default", func(t *testing.T) {
 		b, err := NewBuilder(templates)
 		require.NoError(t, err)
 
@@ -224,20 +224,20 @@ func TestWithDefaultMode(t *testing.T) {
 		assert.ErrorIs(t, err, ErrUnknownMode)
 	})
 
-	t.Run("実在しない既定モードは構築時に検出される", func(t *testing.T) {
+	t.Run("missing default mode is detected at build time", func(t *testing.T) {
 		_, err := NewBuilder(templates, WithDefaultMode("typo"))
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrUnknownMode)
 		assert.Contains(t, err.Error(), "default mode 'typo' is not registered")
 	})
 
-	t.Run("partialを既定モードには指定できない", func(t *testing.T) {
+	t.Run("partial cannot be the default mode", func(t *testing.T) {
 		_, err := NewBuilder(templates, WithDefaultMode("_hidden"))
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrUnknownMode)
 	})
 
-	t.Run("空文字の指定は無視される", func(t *testing.T) {
+	t.Run("empty string is ignored", func(t *testing.T) {
 		b, err := NewBuilder(templates, WithDefaultMode(""))
 		require.NoError(t, err)
 
@@ -245,7 +245,7 @@ func TestWithDefaultMode(t *testing.T) {
 		assert.ErrorIs(t, err, ErrUnknownMode)
 	})
 
-	t.Run("Has は既定モードへのフォールバックを反映しない", func(t *testing.T) {
+	t.Run("Has ignores the default-mode fallback", func(t *testing.T) {
 		b, err := NewBuilder(templates, WithDefaultMode("default"))
 		require.NoError(t, err)
 
@@ -255,7 +255,7 @@ func TestWithDefaultMode(t *testing.T) {
 }
 
 func TestWithPartialPrefix(t *testing.T) {
-	t.Run("接頭辞を変更できる", func(t *testing.T) {
+	t.Run("prefix can be changed", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"@shared": "共通ルール",
 			"review":  `本文: {{template "@shared" .}}`,
@@ -269,7 +269,7 @@ func TestWithPartialPrefix(t *testing.T) {
 		assert.Equal(t, "本文: 共通ルール", got)
 	})
 
-	t.Run("変更後は既定の _ がモードとして公開される", func(t *testing.T) {
+	t.Run("after the change, _ entries become modes", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_legacy": "旧来はpartial扱いだった内容",
 			"review":  "本文",
@@ -283,7 +283,7 @@ func TestWithPartialPrefix(t *testing.T) {
 		assert.Equal(t, "旧来はpartial扱いだった内容", got)
 	})
 
-	t.Run("空文字を指定すると全エントリがモードになる", func(t *testing.T) {
+	t.Run("empty prefix makes every entry a mode", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"_a": "A",
 			"b":  "B",
@@ -293,7 +293,7 @@ func TestWithPartialPrefix(t *testing.T) {
 		assert.Equal(t, []string{"_a", "b"}, b.Modes())
 	})
 
-	t.Run("既定は DefaultPartialPrefix", func(t *testing.T) {
+	t.Run("defaults to DefaultPartialPrefix", func(t *testing.T) {
 		assert.Equal(t, "_", DefaultPartialPrefix)
 
 		b, err := NewBuilder(map[string]string{
@@ -304,7 +304,7 @@ func TestWithPartialPrefix(t *testing.T) {
 		assert.Equal(t, []string{"b"}, b.Modes())
 	})
 
-	t.Run("パス形式でも末尾要素で判定される", func(t *testing.T) {
+	t.Run("path form is judged by its last element", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"ja/@out": "出力",
 			"ja/rock": `{{template "ja/@out" .}}`,

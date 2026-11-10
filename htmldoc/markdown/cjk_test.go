@@ -20,18 +20,18 @@ func TestConverter_WithCJK(t *testing.T) {
 		want   string
 	}{
 		{
-			name:  "無効なら改行が残る",
+			name:  "disabled keeps newlines",
 			input: japanese,
 			want:  "<p>これは日本語の文章で、\n途中で改行しています。</p>\n",
 		},
 		{
-			name:   "有効なら全角文字間の改行が取り除かれる",
+			name:   "enabled removes newlines between full-width characters",
 			enable: true,
 			input:  japanese,
 			want:   "<p>これは日本語の文章で、途中で改行しています。</p>\n",
 		},
 		{
-			name:   "有効でも英文の改行は空白として残る",
+			name:   "enabled keeps English newlines as spaces",
 			enable: true,
 			input:  "This is English\ntext across lines.\n",
 			want:   "<p>This is English\ntext across lines.</p>\n",
