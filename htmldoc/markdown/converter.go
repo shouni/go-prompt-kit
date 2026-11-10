@@ -1,4 +1,5 @@
-// Package markdown は、MarkdownをHTMLフラグメントへ変換する ports.Converter 実装を提供します。
+// Package markdown provides a ports.Converter implementation that converts Markdown into an HTML
+// fragment.
 package markdown
 
 import (
@@ -19,19 +20,19 @@ var (
 	_ ports.TitledConverter = (*Converter)(nil)
 )
 
-// Converter は goldmark を用いた Markdown 用の ports.Converter 実装です。
+// Converter is the Markdown ports.Converter implementation, built on goldmark.
 type Converter struct {
 	md goldmark.Markdown
 }
 
-// New は Markdown 用の Converter を作成します。
+// New creates a Markdown Converter.
 func New(opts ...Option) *Converter {
 	cfg := &config{}
 	for _, opt := range opts {
 		opt(cfg)
 	}
 
-	// GFM は常に有効にし、オプションで指定された拡張を追加します。
+	// GFM is always on; the extensions given as options are added to it.
 	extensions := append([]goldmark.Extender{extension.GFM}, cfg.extensions...)
 
 	goldmarkOptions := []goldmark.Option{
@@ -46,29 +47,29 @@ func New(opts ...Option) *Converter {
 	}
 }
 
-// Convert は Markdown を HTML に変換します。
+// Convert converts Markdown into HTML.
 func (c *Converter) Convert(input []byte) ([]byte, error) {
 	fragment, _, err := c.convert(input, false)
 
 	return fragment, err
 }
 
-// ConvertWithTitle は、入力を1回だけ解析してHTMLフラグメントとタイトルを返します
-// （ports.TitledConverter の実装です）。
-// Convert と ExtractTitle を続けて呼ぶのと結果は同じですが、構文木の構築は1回で済みます。
+// ConvertWithTitle parses the input once and returns the HTML fragment and the title (the
+// ports.TitledConverter implementation). The result is the same as calling Convert and ExtractTitle
+// in turn, but the syntax tree is built only once.
 func (c *Converter) ConvertWithTitle(input []byte) ([]byte, string, error) {
 	return c.convert(input, true)
 }
 
-// convert は、構文木の構築・レンダリング・タイトル抽出をまとめた実体です。
-// goldmark.Markdown.Convert は「解析してレンダリングする」だけなので、
-// 解析結果を手元に残せるようここでは2段階に分けて呼びます。
+// convert does the work of building the syntax tree, rendering and extracting the title.
+// goldmark.Markdown.Convert only "parses and renders", so here the two stages are called separately
+// to keep the parse result at hand.
 func (c *Converter) convert(input []byte, withTitle bool) ([]byte, string, error) {
 	doc := c.md.Parser().Parse(text.NewReader(input))
 
 	var buf bytes.Buffer
 	if err := c.md.Renderer().Render(&buf, input, doc); err != nil {
-		return nil, "", fmt.Errorf("markdownからHTMLへの変換に失敗しました: %w", err)
+		return nil, "", fmt.Errorf("convert markdown to HTML: %w", err)
 	}
 
 	var title string
@@ -79,12 +80,13 @@ func (c *Converter) convert(input []byte, withTitle bool) ([]byte, string, error
 	return buf.Bytes(), title, nil
 }
 
-// ExtractTitle は、最初の見出しのテキストをタイトルとして抽出します。
-// goldmark のパーサーで構文木を構築してから探索するため、コードブロック内の
-// "#" で始まる行や、閉じの "#" 列、setext形式の見出しも正しく扱えます。
-// 見出しが存在しない場合は空文字を返します。
+// ExtractTitle extracts the text of the first heading as the title. It searches the syntax tree
+// built by goldmark's parser, so lines starting with "#" inside code blocks, closing "#" sequences
+// and setext headings are all handled correctly. It returns the empty string when there is no
+// heading.
 //
-// 変換と同時にタイトルが必要な場合は、入力を2度解析しない ConvertWithTitle を使ってください。
+// When the title is needed along with the conversion, use ConvertWithTitle, which does not parse
+// the input twice.
 func (c *Converter) ExtractTitle(input []byte) string {
 	if len(input) == 0 {
 		return ""
@@ -93,7 +95,7 @@ func (c *Converter) ExtractTitle(input []byte) string {
 	return firstHeadingText(c.md.Parser().Parse(text.NewReader(input)), input)
 }
 
-// firstHeadingText は、構文木の中で最初に現れる見出しのテキストを返します。
+// firstHeadingText returns the text of the first heading in the syntax tree.
 func firstHeadingText(doc ast.Node, source []byte) string {
 	var title string
 	err := ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -110,15 +112,15 @@ func firstHeadingText(doc ast.Node, source []byte) string {
 		return ast.WalkStop, nil
 	})
 	if err != nil {
-		slog.Warn("Markdownタイトル抽出中にエラーが発生しました", "error", err)
+		slog.Warn("error while extracting the Markdown title", "error", err)
 		return ""
 	}
 
 	return title
 }
 
-// inlineText は、ノード配下のインライン要素からプレーンテキストを再帰的に収集します。
-// 強調やリンクなどの装飾記法は取り除かれ、その中身のテキストだけが残ります。
+// inlineText recursively collects plain text from the inline elements under a node. Decorations
+// such as emphasis and links are removed, leaving only their text.
 func inlineText(n ast.Node, source []byte) string {
 	var sb strings.Builder
 
@@ -128,7 +130,7 @@ func inlineText(n ast.Node, source []byte) string {
 			switch v := child.(type) {
 			case *ast.Text:
 				sb.Write(v.Segment.Value(source))
-				// 見出しが複数行にまたがる場合に単語が繋がらないよう空白を補います。
+				// Add a space so that words do not run together when a heading spans several lines.
 				if v.SoftLineBreak() || v.HardLineBreak() {
 					sb.WriteByte(' ')
 				}
@@ -137,7 +139,7 @@ func inlineText(n ast.Node, source []byte) string {
 			case *ast.AutoLink:
 				sb.Write(v.URL(source))
 			default:
-				// Emphasis / Link / CodeSpan などは子のテキストを辿ります。
+				// Emphasis / Link / CodeSpan and the like: follow the children's text.
 				walk(child)
 			}
 		}

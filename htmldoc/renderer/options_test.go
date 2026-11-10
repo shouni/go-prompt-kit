@@ -23,7 +23,7 @@ func TestNew_Defaults(t *testing.T) {
 	assert.Contains(t, got, `<html lang="ja">`)
 	assert.Contains(t, got, "<title>既定タイトル</title>")
 	assert.Contains(t, got, "<p>本文</p>")
-	// 埋め込みの default.css が差し込まれていること
+	// The embedded default.css is inserted
 	assert.Contains(t, got, "--color-primary-main")
 }
 
@@ -37,7 +37,7 @@ func TestNew_WithCSS(t *testing.T) {
 
 		got := buf.String()
 		assert.Contains(t, got, "body { color: rebeccapurple; }")
-		// 既定のCSSは含まれない
+		// The default CSS is not included
 		assert.NotContains(t, got, "--color-primary-main")
 	})
 
@@ -65,14 +65,14 @@ func TestNew_WithTemplateText(t *testing.T) {
 
 		got := buf.String()
 		assert.Equal(t, `<article lang="en"><h1>Title</h1><p>本文</p></article>`, got)
-		// テンプレートが .Style を参照していないためCSSは出力されない
+		// The template does not reference .Style, so no CSS is output
 		assert.NotContains(t, got, "ignored")
 	})
 
 	t.Run("パースに失敗した場合はエラーを返す", func(t *testing.T) {
 		_, err := New(WithTemplateText(`{{.Unclosed`))
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "HTMLテンプレートのパースエラー")
+		assert.Contains(t, err.Error(), "parse HTML template")
 	})
 }
 
@@ -91,20 +91,20 @@ func TestNew_WithTemplate(t *testing.T) {
 	t.Run("nilを渡した場合はエラーを返す", func(t *testing.T) {
 		_, err := New(WithTemplate(nil))
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "テンプレートがnilです")
+		assert.Contains(t, err.Error(), "template is nil")
 	})
 }
 
 func TestRenderer_Render_Error(t *testing.T) {
 	t.Run("テンプレート実行に失敗した場合はエラーを返す", func(t *testing.T) {
-		// TemplateData に存在しないフィールドを参照させる
+		// Reference a field that TemplateData does not have
 		r, err := New(WithTemplateText(`{{.DoesNotExist}}`))
 		require.NoError(t, err)
 
 		var buf bytes.Buffer
 		err = r.Render(&buf, []byte("x"), "ja", "T")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "HTMLテンプレートの実行エラー")
+		assert.Contains(t, err.Error(), "execute HTML template")
 	})
 
 	t.Run("書き込み先がエラーを返す場合", func(t *testing.T) {
@@ -113,11 +113,11 @@ func TestRenderer_Render_Error(t *testing.T) {
 
 		err = r.Render(failingWriter{}, []byte("x"), "ja", "T")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "HTMLテンプレートの実行エラー")
+		assert.Contains(t, err.Error(), "execute HTML template")
 	})
 }
 
-// failingWriter は常に書き込みエラーを返す io.Writer です。
+// failingWriter is an io.Writer that always returns a write error.
 type failingWriter struct{}
 
 func (failingWriter) Write([]byte) (int, error) {
@@ -132,11 +132,11 @@ func TestRenderer_Render_EscapesTitle(t *testing.T) {
 	require.NoError(t, r.Render(&buf, []byte("<p>ok</p>"), "ja", `<script>alert(1)</script>`))
 
 	got := buf.String()
-	// タイトルはエスケープされる（string型のため）
+	// The title is escaped (it is a string)
 	assert.NotContains(t, got, "<title><script>")
 	assert.True(t, strings.Contains(got, "&lt;script&gt;") || strings.Contains(got, "\\u003cscript\\u003e"),
-		"タイトルがエスケープされていません: %s", got)
-	// 本文フラグメントは template.HTML のためエスケープされない
+		"the title is not escaped: %s", got)
+	// The body fragment is a template.HTML and is not escaped
 	assert.Contains(t, got, "<p>ok</p>")
 }
 
@@ -149,11 +149,11 @@ func TestNew_WithExtraCSS(t *testing.T) {
 		require.NoError(t, r.Render(&buf, []byte("<p>x</p>"), "ja", "T"))
 
 		got := buf.String()
-		// 既定CSSが残っていること
+		// The default CSS remains
 		assert.Contains(t, got, "--color-primary-main")
-		// 追加分も含まれること
+		// The addition is included too
 		assert.Contains(t, got, ".finding { color: red; }")
-		// 追加分が後ろにあること（同じセレクタなら上書きできる）
+		// The addition comes after (so the same selector can override)
 		assert.Less(t, strings.Index(got, "--color-primary-main"), strings.Index(got, ".finding"))
 	})
 

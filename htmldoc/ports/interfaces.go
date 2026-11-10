@@ -1,47 +1,46 @@
-// Package ports は、HTMLドキュメント生成が依存するインターフェース（ポート）を定義します。
-// 実装から独立した専用パッケージに置くことで、実装側（markdown / jsondoc / renderer）と
-// 利用側（htmldoc）の双方が循環参照なしにインターフェースを参照できます。
+// Package ports defines the interfaces (ports) HTML document generation depends on. Keeping them in
+// a dedicated package, apart from the implementations, lets both the implementations (markdown /
+// jsondoc / renderer) and the consumer (htmldoc) reference the interfaces without import cycles.
 package ports
 
 import (
 	"io"
 )
 
-// Runner は、入力を完全なHTMLドキュメントとして書き出すコアサービスを抽象化します。
-// 入力形式は注入される Converter が決めるため、この抽象は形式に依存しません。
+// Runner abstracts the core service that writes input as a complete HTML document. The injected
+// Converter decides the input format, so this abstraction is format-agnostic.
 type Runner interface {
 	Run(writer io.Writer, title string, input []byte) error
 }
 
-// Converter は、入力をHTMLフラグメント（ドキュメント全体ではなく本文部分）へ
-// 変換するサービスのインターフェースです。
+// Converter is the interface of a service that converts input into an HTML fragment (the body part,
+// not a whole document).
 type Converter interface {
-	// Convert は入力をHTMLフラグメントへ変換します。
+	// Convert converts the input into an HTML fragment.
 	Convert(input []byte) ([]byte, error)
-	// ExtractTitle は入力からドキュメントのタイトルを抽出します。
-	// 抽出できない場合は空文字を返します。
+	// ExtractTitle extracts the document title from the input. It returns the empty string when
+	// there is none.
 	ExtractTitle(input []byte) string
 }
 
-// TitledConverter は、変換とタイトル抽出を1回の解析でまとめて行える Converter です。
+// TitledConverter is a Converter that can convert and extract the title in a single parse.
 //
-// Converter だけを実装していれば Document は動きますが、その場合タイトルを
-// 自動抽出するたびに Convert と ExtractTitle が同じ入力をそれぞれ解析するため、
-// 入力を2回解析することになります。これを実装していると Document はこちらを
-// 優先して呼び、解析を1回で済ませます。
+// Document works with a plain Converter, but then every automatic title extraction makes Convert
+// and ExtractTitle each parse the same input, so the input is parsed twice. When this is
+// implemented, Document calls it instead and parses once.
 //
-// 同梱の markdown.Converter と jsondoc.Converter はどちらも実装しています。
+// The bundled markdown.Converter and jsondoc.Converter both implement it.
 type TitledConverter interface {
 	Converter
 
-	// ConvertWithTitle は、入力を1回だけ解析してHTMLフラグメントとタイトルを返します。
-	// タイトルを抽出できない場合、title は空文字になります（エラーではありません）。
+	// ConvertWithTitle parses the input once and returns the HTML fragment and the title. When no
+	// title can be extracted, title is empty (not an error).
 	//
-	// 返す値は Convert と ExtractTitle をそれぞれ呼んだ場合と一致していなければなりません。
+	// The returned values must match those of calling Convert and ExtractTitle separately.
 	ConvertWithTitle(input []byte) (fragment []byte, title string, err error)
 }
 
-// Renderer は、HTMLフラグメントを完全なHTMLドキュメントへ組み立てるインターフェースです。
+// Renderer is the interface that assembles an HTML fragment into a complete HTML document.
 type Renderer interface {
 	Render(writer io.Writer, bodyHTML []byte, lang, title string) error
 }

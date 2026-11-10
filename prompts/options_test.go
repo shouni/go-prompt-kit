@@ -69,8 +69,8 @@ func TestWithFuncs(t *testing.T) {
 	})
 }
 
-// TestNewBuilder_DuplicateDefinition は、全テンプレートが名前空間を共有することによる
-// 静かな上書きを、構築時に検出できることを確認します。
+// TestNewBuilder_DuplicateDefinition confirms that the silent overwrite caused by all templates
+// sharing one namespace is detected at construction.
 func TestNewBuilder_DuplicateDefinition(t *testing.T) {
 	t.Run("複数エントリが同名を define した場合はエラー", func(t *testing.T) {
 		_, err := NewBuilder(map[string]string{
@@ -80,7 +80,7 @@ func TestNewBuilder_DuplicateDefinition(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrDuplicateDefinition)
 		assert.Contains(t, err.Error(), "'shared'")
-		// 衝突した両エントリ名が示されること
+		// Both colliding entry names are reported
 		assert.Contains(t, err.Error(), "'a'")
 		assert.Contains(t, err.Error(), "'b'")
 	})
@@ -106,14 +106,14 @@ func TestNewBuilder_DuplicateDefinition(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "A: 共通", gotA)
 
-		// define されたテンプレートは他エントリからも参照できる
+		// A defined template can be referenced from other entries too
 		gotB, err := b.Build("b", nil)
 		require.NoError(t, err)
 		assert.Equal(t, "B: 共通", gotB)
 	})
 
 	t.Run("参照のみでは衝突とみなされない", func(t *testing.T) {
-		// 複数のモードが同じ partial を参照するのは正常な使い方
+		// Several modes referencing the same partial is normal use
 		_, err := NewBuilder(map[string]string{
 			"_shared": "共通",
 			"a":       `{{template "_shared" .}}`,
@@ -123,7 +123,7 @@ func TestNewBuilder_DuplicateDefinition(t *testing.T) {
 	})
 
 	t.Run("参照先が後から定義される場合も衝突とみなされない", func(t *testing.T) {
-		// "_z" は名前順で "a" より後に処理される
+		// "_z" is processed after "a" in name order
 		b, err := NewBuilder(map[string]string{
 			"a":  `A: {{template "z_partial" .}}`,
 			"_z": `{{define "z_partial"}}後から定義{{end}}`,
@@ -228,7 +228,7 @@ func TestWithDefaultMode(t *testing.T) {
 		_, err := NewBuilder(templates, WithDefaultMode("typo"))
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrUnknownMode)
-		assert.Contains(t, err.Error(), "既定モード 'typo' が登録されていません")
+		assert.Contains(t, err.Error(), "default mode 'typo' is not registered")
 	})
 
 	t.Run("partialを既定モードには指定できない", func(t *testing.T) {
@@ -250,7 +250,7 @@ func TestWithDefaultMode(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.True(t, b.Has("rock"))
-		assert.False(t, b.Has("存在しないモード"), "Has は実際の登録状況を返すべきです")
+		assert.False(t, b.Has("存在しないモード"), "Has should report actual registration")
 	})
 }
 
@@ -315,8 +315,8 @@ func TestWithPartialPrefix(t *testing.T) {
 	})
 }
 
-// TestLoadFS_ComicStylePattern は、ap-comic 相当の構成
-// （工程ごとのディレクトリ・.md のみ・既定モードへのフォールバック）を再現します。
+// TestLoadFS_ComicStylePattern reproduces an ap-comic-like layout (a directory per stage, .md only,
+// fallback to a default mode).
 func TestLoadFS_ComicStylePattern(t *testing.T) {
 	mockFS := fstest.MapFS{
 		"prompts/outline/default.md": {Data: []byte("章立て: {{.Title}}")},
@@ -329,7 +329,7 @@ func TestLoadFS_ComicStylePattern(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	// モード未指定でも既定へ落ちる
+	// An unspecified mode still falls back to the default
 	got, err := b.Build("", struct{ Title string }{Title: "第一章"})
 	require.NoError(t, err)
 	assert.Equal(t, "章立て: 第一章", got)

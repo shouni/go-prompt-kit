@@ -1,8 +1,8 @@
-// Package renderer は、HTMLフラグメントを完全なHTMLドキュメントへ組み立てる
-// ports.Renderer 実装を提供します。
+// Package renderer provides a ports.Renderer implementation that assembles an HTML fragment into a
+// complete HTML document.
 //
-// 組み立てには html/template を使い、テンプレートとスタイルシートは
-// 埋め込みの template.html / default.css を既定として、オプションで差し替えられます。
+// It assembles with html/template; the template and the stylesheet default to the embedded
+// template.html / default.css and can be replaced by options.
 package renderer
 
 import (
@@ -13,27 +13,26 @@ import (
 //go:embed *.html *.css
 var assets embed.FS
 
-// TemplateData は、ドキュメントテンプレートへ渡す値を保持します。
+// TemplateData holds the values passed to the document template.
 //
-// WithTemplate / WithTemplateText で差し替えるテンプレートは、この 4 つだけを
-// 参照できます。既定のテンプレート（template.html）と同じ形です。
+// A template supplied through WithTemplate / WithTemplateText can reference only these four. They
+// have the same shape as the default template (template.html):
 //
 //	<html lang="{{.Lang}}">
 //	<title>{{.Title}}</title>
 //	<style>{{.Style}}</style>
 //	{{.Content}}
 //
-// Style と Content が template.CSS / template.HTML なのは、html/template に
-// エスケープさせないためです。CSS は WithCSS で与えたものが、Content は
-// Converter が組んだフラグメントがそのまま入ります。どちらも信頼できる入力で
-// あることが前提で、利用者の入力を直接流し込む場所ではありません。
+// Style and Content are template.CSS / template.HTML so that html/template does not escape them.
+// CSS is whatever WithCSS gave, and Content is the fragment the Converter built, inserted as is.
+// Both are assumed to be trusted input; this is not a place to feed user input directly.
 type TemplateData struct {
-	// Lang は <html lang> に入る言語タグです（htmldoc.WithLang、既定 "ja-jp"）。
+	// Lang is the language tag in <html lang> (htmldoc.WithLang, default "ja-jp").
 	Lang string
-	// Title は <title> に入る文字列です。空の場合は Converter が本文から拾います。
+	// Title is the string in <title>. When empty, the Converter picks it from the body.
 	Title string
-	// Style は <style> の中身です。エスケープされません。
+	// Style is the content of <style>. It is not escaped.
 	Style template.CSS
-	// Content は本文の HTML フラグメントです。エスケープされません。
+	// Content is the HTML fragment of the body. It is not escaped.
 	Content template.HTML
 }

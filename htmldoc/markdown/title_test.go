@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConverter_ExtractTitle_BlockContext は、行単位の正規表現では
-// 誤判定していたケースを検証します。いずれも構文木を辿ることで正しく解決されます。
+// TestConverter_ExtractTitle_BlockContext verifies cases that a line-based regular expression used
+// to get wrong. Walking the syntax tree resolves all of them correctly.
 func TestConverter_ExtractTitle_BlockContext(t *testing.T) {
 	c := New()
 
@@ -165,8 +165,8 @@ func TestConverter_Options(t *testing.T) {
 	})
 }
 
-// TestConverter_Concurrent は、1つのConverterを複数goroutineから
-// 同時に使用しても安全であることを確認します（go test -race で検証されます）。
+// TestConverter_Concurrent confirms that one Converter is safe to use from several goroutines at
+// once (verified by go test -race).
 func TestConverter_Concurrent(t *testing.T) {
 	c := New()
 	input := []byte("# 並行タイトル\n\n本文です。\n")
@@ -179,12 +179,12 @@ func TestConverter_Concurrent(t *testing.T) {
 			defer func() { done <- struct{}{} }()
 			for range 20 {
 				if title := c.ExtractTitle(input); title != "並行タイトル" {
-					t.Errorf("タイトルが一致しません: %q", title)
+					t.Errorf("title mismatch: %q", title)
 					return
 				}
 				got, err := c.Convert(input)
 				if err != nil || !strings.Contains(string(got), "<h1>") {
-					t.Errorf("変換に失敗しました: %v", err)
+					t.Errorf("conversion failed: %v", err)
 					return
 				}
 			}

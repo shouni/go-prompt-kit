@@ -1,10 +1,9 @@
 package jsondoc
 
-// Option は Converter の設定オプションを定義する関数型です。
+// Option is a function that configures a Converter.
 type Option func(*Converter)
 
-// WithTitleKey は、ExtractTitle がタイトルとして参照する
-// トップレベルJSONキーを変更します（既定は "title"）。
+// WithTitleKey changes the top-level JSON key ExtractTitle reads as the title (default "title").
 func WithTitleKey(key string) Option {
 	return func(c *Converter) {
 		if key != "" {

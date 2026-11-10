@@ -6,7 +6,7 @@ import (
 	"github.com/shouni/go-prompt-kit/htmldoc/renderer"
 )
 
-// config は Document の構築設定を保持します。
+// config holds the settings for building a Document.
 type config struct {
 	converter        ports.Converter
 	renderer         ports.Renderer
@@ -16,46 +16,44 @@ type config struct {
 	defaultTitle     string
 }
 
-// Option は Document の設定オプションを定義する関数型です。
+// Option is a function that configures a Document.
 type Option func(*config)
 
-// WithConverter は、任意の ports.Converter を注入します。
-// jsondoc など、Markdown以外の入力を扱うパイプラインを組む場合に使用します。
-// 指定した場合、既定の markdown.Converter は構築されず WithConverterOptions は無視されます。
+// WithConverter injects any ports.Converter. Use it to build a pipeline for input other than
+// Markdown, such as jsondoc. When set, the default markdown.Converter is not built and
+// WithConverterOptions is ignored.
 func WithConverter(c ports.Converter) Option {
 	return func(cfg *config) {
 		cfg.converter = c
 	}
 }
 
-// WithRenderer は、任意の ports.Renderer を注入します。
-// 指定した場合、埋め込みアセットを使う既定のRendererは構築されず
-// WithRendererOptions は無視されます。
+// WithRenderer injects any ports.Renderer. When set, the default Renderer using the embedded assets
+// is not built and WithRendererOptions is ignored.
 func WithRenderer(r ports.Renderer) Option {
 	return func(cfg *config) {
 		cfg.renderer = r
 	}
 }
 
-// WithConverterOptions は、既定の markdown.Converter へ渡すオプションを追加します。
-// WithConverter で Converter を明示注入した場合は無視されます。
+// WithConverterOptions adds options passed to the default markdown.Converter. Ignored when a
+// Converter is injected explicitly with WithConverter.
 func WithConverterOptions(opts ...markdown.Option) Option {
 	return func(cfg *config) {
 		cfg.converterOptions = append(cfg.converterOptions, opts...)
 	}
 }
 
-// WithRendererOptions は、既定のRendererへ渡すオプションを追加します。
-// テンプレートやCSSを差し替える場合に使用します。
-// WithRenderer で Renderer を明示注入した場合は無視されます。
+// WithRendererOptions adds options passed to the default Renderer. Use it to replace the template
+// or the CSS. Ignored when a Renderer is injected explicitly with WithRenderer.
 func WithRendererOptions(opts ...renderer.Option) Option {
 	return func(cfg *config) {
 		cfg.rendererOptions = append(cfg.rendererOptions, opts...)
 	}
 }
 
-// WithLang は、生成するHTMLドキュメントの lang 属性を設定します（既定は "ja-jp"）。
-// 空文字を渡した場合は既定値が維持されます。
+// WithLang sets the lang attribute of the generated HTML document (default "ja-jp"). The empty
+// string keeps the default.
 func WithLang(lang string) Option {
 	return func(cfg *config) {
 		if lang != "" {
@@ -64,9 +62,8 @@ func WithLang(lang string) Option {
 	}
 }
 
-// WithDefaultTitle は、タイトルが指定されず入力からも抽出できなかった場合に
-// 使用するタイトルを設定します（既定は "Document"）。
-// 空文字を渡した場合は既定値が維持されます。
+// WithDefaultTitle sets the title used when none is given and none can be extracted from the input
+// (default "Document"). The empty string keeps the default.
 func WithDefaultTitle(title string) Option {
 	return func(cfg *config) {
 		if title != "" {

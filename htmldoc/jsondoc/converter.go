@@ -1,11 +1,11 @@
-// Package jsondoc は、任意の構造を持つJSON入力を、呼び出し側が指定した
-// html/template を通じてHTMLフラグメントへ変換する ports.Converter 実装を提供します。
-// markdown.Converter がMarkdownの中身に関知しないのと同様、JSONのスキーマや
-// テンプレートの中身には関知しません — それらは呼び出し側の責務です。
+// Package jsondoc provides a ports.Converter implementation that converts JSON input of any
+// structure into an HTML fragment through an html/template given by the caller. Just as
+// markdown.Converter does not care about the content of the Markdown, this package does not care
+// about the JSON schema or the template's content — those are the caller's responsibility.
 //
-// 数値は json.Number（入力に書かれた字面のままの文字列）としてテンプレートへ渡します。
-// float64 を経由すると桁の大きい整数が指数表記になり、末尾が 0 の小数も丸められて、
-// 文書に載る数が入力と食い違うためです。
+// Numbers are passed to the template as json.Number (a string exactly as written in the input).
+// Going through float64 would put large integers into exponent notation and round decimals ending
+// in 0, so the numbers in the document would disagree with the input.
 package jsondoc
 
 import (
@@ -27,14 +27,14 @@ var (
 
 const defaultTitleKey = "title"
 
-// Converter は JSON 用の ports.Converter 実装で、
-// JSON入力を呼び出し側のテンプレートでHTMLフラグメントへ変換します。
+// Converter is the JSON ports.Converter implementation; it converts JSON input into an HTML
+// fragment with the caller's template.
 type Converter struct {
 	tpl      *template.Template
 	titleKey string
 }
 
-// New は、HTMLフラグメントの生成に使うテンプレートを受け取り Converter を構築します。
+// New builds a Converter from the template used to generate the HTML fragment.
 func New(tpl *template.Template, opts ...Option) *Converter {
 	c := &Converter{
 		tpl:      tpl,
@@ -46,21 +46,21 @@ func New(tpl *template.Template, opts ...Option) *Converter {
 	return c
 }
 
-// Convert は、JSON入力をデコードし、テンプレートに渡してHTMLフラグメントを生成します。
+// Convert decodes the JSON input and passes it to the template to generate an HTML fragment.
 func (c *Converter) Convert(input []byte) ([]byte, error) {
 	fragment, _, err := c.convert(input, false)
 
 	return fragment, err
 }
 
-// ConvertWithTitle は、入力を1回だけデコードしてHTMLフラグメントとタイトルを返します
-// （ports.TitledConverter の実装です）。
-// Convert と ExtractTitle を続けて呼ぶのと結果は同じですが、デコードは1回で済みます。
+// ConvertWithTitle decodes the input once and returns the HTML fragment and the title (the
+// ports.TitledConverter implementation). The result is the same as calling Convert and ExtractTitle
+// in turn, but the input is decoded only once.
 func (c *Converter) ConvertWithTitle(input []byte) ([]byte, string, error) {
 	return c.convert(input, true)
 }
 
-// convert は、デコード・レンダリング・タイトル取得をまとめた実体です。
+// convert does the work of decoding, rendering and getting the title.
 func (c *Converter) convert(input []byte, withTitle bool) ([]byte, string, error) {
 	if len(input) == 0 {
 		return nil, "", nil
@@ -73,7 +73,7 @@ func (c *Converter) convert(input []byte, withTitle bool) ([]byte, string, error
 
 	var buf bytes.Buffer
 	if err := c.tpl.Execute(&buf, data); err != nil {
-		return nil, "", fmt.Errorf("HTMLフラグメントのレンダリングに失敗しました: %w", err)
+		return nil, "", fmt.Errorf("render HTML fragment: %w", err)
 	}
 
 	var title string
@@ -84,35 +84,35 @@ func (c *Converter) convert(input []byte, withTitle bool) ([]byte, string, error
 	return buf.Bytes(), title, nil
 }
 
-// decode は、JSON入力を any へ読み取ります。
+// decode reads the JSON input into an any.
 //
-// 数値は json.Number（元の字面のままの文字列）として保持します。既定の float64 へ
-// 変換すると、桁の大きい整数が "1.234567890123e+12" という指数表記になり、
-// 末尾が 0 の小数（0.30）も 0.3 に丸められます。テンプレートはそれをそのまま
-// 出力するため、入力に書かれた数と表示される数が食い違います。
-// 文書として書き出すのがこのパッケージの目的なので、字面を優先します。
+// Numbers are kept as json.Number (a string exactly as written). Converting them to the default
+// float64 would turn a large integer into exponent notation such as "1.234567890123e+12" and round
+// a decimal ending in 0 (0.30) to 0.3. Templates output that as is, so the number displayed would
+// disagree with the number in the input. Writing documents is the purpose of this package, so the
+// literal text wins.
 //
-// テンプレート側で数値として比較・計算したい場合は、json.Number を受け取って
-// 変換する関数を Funcs で登録してください。
+// To compare or compute with numbers in a template, register a function that takes a json.Number
+// and converts it, via Funcs.
 func decode(input []byte) (any, error) {
 	dec := json.NewDecoder(bytes.NewReader(input))
 	dec.UseNumber()
 
 	var data any
 	if err := dec.Decode(&data); err != nil {
-		return nil, fmt.Errorf("JSON入力のパースに失敗しました: %w", err)
+		return nil, fmt.Errorf("parse JSON input: %w", err)
 	}
 
-	// json.Unmarshal と違い Decoder は値の後ろを読み飛ばすため、
-	// 入力が1つの値で終わっていることを確かめます。
+	// Unlike json.Unmarshal, a Decoder skips whatever follows the value, so confirm that the input
+	// ends after one value.
 	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("JSON入力のパースに失敗しました: 値の後ろに余分なデータがあります")
+		return nil, fmt.Errorf("parse JSON input: unexpected data after the value")
 	}
 
 	return data, nil
 }
 
-// titleOf は、デコード済みの値のトップレベルから titleKey の文字列値を取り出します。
+// titleOf takes the string value of titleKey from the top level of the decoded value.
 func (c *Converter) titleOf(data any) string {
 	object, ok := data.(map[string]any)
 	if !ok {
@@ -124,13 +124,13 @@ func (c *Converter) titleOf(data any) string {
 	return title
 }
 
-// ExtractTitle は、JSON入力のトップレベルオブジェクトから
-// titleKey（既定は "title"）に対応する文字列値を抽出します。
+// ExtractTitle extracts the string value for titleKey (default "title") from the top-level object
+// of the JSON input.
 //
-// 入力全体をデコードせず、目的のキーが見つかった時点で読み取りを打ち切ります。
-// そのため、キーより後ろが壊れた入力でもタイトルは取り出せます（その入力は
-// Convert 側で改めてエラーになります）。
-// 変換と同時にタイトルが必要な場合は、入力を2度読まない ConvertWithTitle を使ってください。
+// It does not decode the whole input and stops reading as soon as the key is found. A title
+// therefore comes back even when the input is broken after the key (Convert reports an error for
+// that input anyway). When the title is needed along with the conversion, use ConvertWithTitle,
+// which does not read the input twice.
 func (c *Converter) ExtractTitle(input []byte) string {
 	dec := jsontext.NewDecoder(bytes.NewReader(input))
 	if dec.PeekKind() != jsontext.KindBeginObject {
@@ -153,7 +153,7 @@ func (c *Converter) ExtractTitle(input []byte) string {
 			continue
 		}
 
-		// 値が文字列でなければタイトルとしては扱いません。
+		// A value that is not a string is not treated as a title.
 		if dec.PeekKind() != jsontext.KindString {
 			return ""
 		}

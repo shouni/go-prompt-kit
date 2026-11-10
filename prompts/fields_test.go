@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestBuilder_Fields は、モードが要求するフィールドの列挙を確認します。
+// TestBuilder_Fields checks the listing of the fields a mode requires.
 func TestBuilder_Fields(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -106,9 +106,9 @@ func TestBuilder_Fields(t *testing.T) {
 	}
 }
 
-// TestBuilder_Fields_Rebound は、range と with で "." が差し替わる区間の扱いを固定します。
-// 内側のフィールドは data からの位置が決まらないため列挙しませんが、
-// 対象の式・else 節・$ 起点の参照は位置が確定するので列挙します。
+// TestBuilder_Fields_Rebound pins the handling of spans where range and with rebind ".". Fields
+// inside them have no fixed position in data and are not listed, but the target expression, the
+// else clause and $-rooted references have a fixed position and are listed.
 func TestBuilder_Fields_Rebound(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -159,7 +159,7 @@ func TestBuilder_Fields_Rebound(t *testing.T) {
 	}
 }
 
-// TestBuilder_Fields_Errors は、Expand と同じ理由で断る場合を確認します。
+// TestBuilder_Fields_Errors checks the cases refused for the same reasons as Expand.
 func TestBuilder_Fields_Errors(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -204,9 +204,9 @@ func TestBuilder_Fields_Errors(t *testing.T) {
 	}
 }
 
-// TestBuilder_Fields_MatchesBuild は、列挙されたフィールドを揃えたデータなら
-// Build が通ることを確認します。missingkey=error との対であることが Fields の
-// 存在理由なので、片方だけ変わると意味を失います。
+// TestBuilder_Fields_MatchesBuild confirms that Build succeeds with data holding exactly the listed
+// fields. Being the counterpart of missingkey=error is why Fields exists, so a change to only one
+// side would make it pointless.
 func TestBuilder_Fields_MatchesBuild(t *testing.T) {
 	b, err := NewBuilder(map[string]string{
 		"m":     `{{.Language}}で{{.Task}}を行ってください。{{template "_sign" .}}`,
@@ -227,7 +227,7 @@ func TestBuilder_Fields_MatchesBuild(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "値で値を行ってください。-- 値", got)
 
-	// 1つでも欠ければ Build は失敗します（Fields が返した集合が過不足ないことの裏です）。
+	// Missing even one makes Build fail (the flip side of the returned set being exactly right).
 	delete(data, "Task")
 	_, err = b.Build("m", data)
 	assert.Error(t, err)

@@ -11,9 +11,9 @@ import (
 	"github.com/shouni/go-prompt-kit/frontmatter"
 )
 
-// modeInfo は、利用側が自前で定義するメタデータ構造の代わりです。
-// このパッケージはメタデータの書式に関知しないため、テストでは標準ライブラリの
-// json.Unmarshal を UnmarshalFunc として渡します。
+// modeInfo stands in for the metadata struct a consumer defines itself. This package does not care
+// about the metadata format, so the tests pass the standard library's json.Unmarshal as the
+// UnmarshalFunc.
 type modeInfo struct {
 	Direction string   `json:"direction"`
 	UseWhen   string   `json:"use_when"`
@@ -34,7 +34,7 @@ func TestDecode(t *testing.T) {
 		err := frontmatter.Decode("", &got, json.Unmarshal)
 
 		require.NoError(t, err)
-		assert.Equal(t, "既存の値", got.Direction, "値が書き換えられています")
+		assert.Equal(t, "既存の値", got.Direction, "the value was overwritten")
 	})
 
 	t.Run("空白だけの front matter も空として扱う", func(t *testing.T) {
@@ -50,11 +50,11 @@ func TestDecode(t *testing.T) {
 		err := frontmatter.Decode(`{"direction":`, &got, json.Unmarshal)
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "front matter の解析に失敗しました")
+		assert.Contains(t, err.Error(), "parse front matter")
 	})
 
 	t.Run("解析関数のエラーを包んで返す", func(t *testing.T) {
-		sentinel := errors.New("解析器の都合")
+		sentinel := errors.New("parser-specific failure")
 		fail := func([]byte, any) error { return sentinel }
 
 		err := frontmatter.Decode("direction: 技術解説", &modeInfo{}, fail)
@@ -68,7 +68,7 @@ func TestDecode(t *testing.T) {
 		assert.ErrorIs(t, err, frontmatter.ErrNoUnmarshalFunc)
 	})
 
-	// 空のデータでは配線の誤りが表面化しないため、front matter の中身によらず検査します。
+	// Empty data would hide a wiring mistake, so the check runs whatever the front matter holds.
 	t.Run("front matter が空でも解析関数の指定漏れは検出する", func(t *testing.T) {
 		err := frontmatter.Decode("", &modeInfo{}, nil)
 
@@ -95,7 +95,7 @@ func TestDecodeAs(t *testing.T) {
 		got, err := frontmatter.DecodeAs[modeInfo](`{"direction":`, json.Unmarshal)
 
 		require.Error(t, err)
-		assert.Zero(t, got, "失敗した場合に途中まで読んだ値を返しています")
+		assert.Zero(t, got, "a partially read value was returned on failure")
 	})
 
 	t.Run("解析関数が無い場合はエラーを返す", func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestDecodeMap(t *testing.T) {
 		got, err := frontmatter.DecodeMap[modeInfo](fronts, json.Unmarshal)
 
 		require.NoError(t, err)
-		require.Contains(t, got, "plain", "キーの集合は入力と同じであるべきです")
+		require.Contains(t, got, "plain", "the keys should match the input")
 		assert.Zero(t, got["plain"])
 	})
 
@@ -159,8 +159,8 @@ func TestDecodeMap(t *testing.T) {
 		assert.Contains(t, err.Error(), "'broken'")
 	})
 
-	// 壊れたエントリが複数あっても、報告されるキーが実行のたびに変わらないことを確認します。
-	// マップの走査順に任せると、直したはずのエラーが別のキーで再発したように見えます。
+	// Confirms that with several broken entries the reported key does not change between runs. Left
+	// to map iteration order, a fixed error would appear to recur on another key.
 	t.Run("報告するキーは名前順で安定している", func(t *testing.T) {
 		fronts := map[string]string{
 			"aaa": `{"direction":`,
@@ -191,8 +191,8 @@ func TestDecodeMap(t *testing.T) {
 	})
 }
 
-// TestSplitMapAndDecodeMap は、resource.Load の戻り値を想定した
-// 本文とメタデータの分離が一続きで動くことを確認します。
+// TestSplitMapAndDecodeMap confirms that splitting body and metadata, starting from what
+// resource.Load returns, works end to end.
 func TestSplitMapAndDecodeMap(t *testing.T) {
 	files := map[string]string{
 		"tech_solo": "---\n{\"direction\":\"技術解説\"}\n---\n本文A\n",

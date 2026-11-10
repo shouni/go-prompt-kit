@@ -8,24 +8,22 @@ import (
 	"strings"
 )
 
-// ErrNoUnmarshalFunc は、解析関数が渡されなかった場合に返されます。
+// ErrNoUnmarshalFunc is returned when no parsing function is given.
 var ErrNoUnmarshalFunc = errors.New("frontmatter: no unmarshal function configured")
 
-// UnmarshalFunc は、front matter を構造体へ読み取る関数です。
-// yaml.Unmarshal や json.Unmarshal をそのまま渡せます。
+// UnmarshalFunc reads front matter into a struct. yaml.Unmarshal and json.Unmarshal can be passed
+// as is.
 //
-// このパッケージがYAMLライブラリを直接参照せず呼び出し側から受け取るのは、
-// ライブラリを利用側が選べるようにするためです。ライブラリを固定すると、
-// 乗り換えのたびにこのモジュールのリリースと足並みを揃える必要が生じ、
-// 移行の途中では1つのバイナリに2つの実装が載ります。
+// This package takes the YAML library from the caller instead of referencing one directly so that
+// consumers can choose it. A fixed library would force every switch to wait for a release of this
+// module, and mid-migration a single binary would carry two implementations.
 type UnmarshalFunc func(data []byte, v any) error
 
-// Decode は、Split が返した front matter を v へ読み取ります。
-// front matter が空の場合は何もせず nil を返すため、メタデータを持たない
-// プロンプトもそのまま扱えます。
+// Decode reads the front matter returned by Split into v. Empty front matter is a no-op returning
+// nil, so prompts without metadata are handled as they are.
 func Decode(front string, v any, unmarshal UnmarshalFunc) error {
-	// データの有無にかかわらず先に検査します。空のエントリだけを渡したときに
-	// 配線の誤りが表面化しないのを避けるためです。
+	// Check this first regardless of the data, so that a wiring mistake does not go unnoticed when
+	// only empty entries are passed.
 	if unmarshal == nil {
 		return ErrNoUnmarshalFunc
 	}
@@ -34,19 +32,18 @@ func Decode(front string, v any, unmarshal UnmarshalFunc) error {
 	}
 
 	if err := unmarshal([]byte(front), v); err != nil {
-		return fmt.Errorf("front matter の解析に失敗しました: %w", err)
+		return fmt.Errorf("parse front matter: %w", err)
 	}
 
 	return nil
 }
 
-// DecodeAs は、Split が返した front matter を T として読み取って返します。
-// 受け取る変数を先に用意しなくてよいだけで、Decode と同じ働きをします
-// （DecodeMap の単数版です）。
+// DecodeAs reads the front matter returned by Split as a T and returns it. It works like Decode,
+// except that no variable has to be prepared first (it is the single-value form of DecodeMap).
 //
 //	info, err := frontmatter.DecodeAs[ModeInfo](front, yaml.Unmarshal)
 //
-// front matter が空の場合は T のゼロ値を返します。エラーではありません。
+// Empty front matter returns T's zero value, not an error.
 func DecodeAs[T any](front string, unmarshal UnmarshalFunc) (T, error) {
 	var v T
 	if err := Decode(front, &v, unmarshal); err != nil {
@@ -57,19 +54,19 @@ func DecodeAs[T any](front string, unmarshal UnmarshalFunc) (T, error) {
 	return v, nil
 }
 
-// DecodeMap は、SplitMap が返した front matter をまとめて T へ読み取ります。
-// キーの集合は入力と同じで、front matter を持たないエントリは T のゼロ値になります。
+// DecodeMap reads all the front matter returned by SplitMap into T. The keys are the same as the
+// input's; an entry without front matter gets T's zero value.
 //
-// 解析に失敗したエントリがあれば、そのキー名を添えてエラーを返します
-// （書き損じたメタデータが空欄として素通りするのを防ぐためです）。
-// エントリごとに扱いを変えたい場合は、Split と Decode を直接使ってください。
+// If an entry fails to parse, the error names its key (so that malformed metadata cannot pass
+// through as blank). To treat entries differently, use Split and Decode directly.
 func DecodeMap[T any](fronts map[string]string, unmarshal UnmarshalFunc) (map[string]T, error) {
 	if unmarshal == nil {
 		return nil, ErrNoUnmarshalFunc
 	}
 
 	out := make(map[string]T, len(fronts))
-	// 複数のエントリが壊れている場合でも報告するキーが変わらないよう、名前順に処理します。
+	// Process in name order so that the reported key does not change when several entries are
+	// broken.
 	for _, name := range slices.Sorted(maps.Keys(fronts)) {
 		var v T
 		if err := Decode(fronts[name], &v, unmarshal); err != nil {

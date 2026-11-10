@@ -7,27 +7,27 @@
  * =============================================================================
  */
 
-/* テーマカラーの変数定義 (セマンティック・ネーミング適用) */
+/* Theme color variables (semantic naming) */
 :root {
     /* Primary Color (Main Theme: Indigo-based) */
     --color-primary-main: #3f51b5;         /* Table Header, Links, Blockquote Border, H4 */
-    --color-primary-dark: #1a237e;         /* H2テキスト, Link Hover */
-    --color-primary-light: #5c6bc0;        /* H3テキスト */
-    --color-primary-text-accent: #3949ab;  /* Blockquote テキスト */
-    --color-primary-bg-weak: #e8eaf6;      /* Blockquote 背景 */
+    --color-primary-dark: #1a237e;         /* H2 text, link hover */
+    --color-primary-light: #5c6bc0;        /* H3 text */
+    --color-primary-text-accent: #3949ab;  /* Blockquote text */
+    --color-primary-bg-weak: #e8eaf6;      /* Blockquote background */
 
-    --rgb-primary-main: 63, 81, 181;       /* rgba()用 (3f51b5) */
+    --rgb-primary-main: 63, 81, 181;       /* for rgba() (3f51b5) */
 
     /* Secondary Color (Accent Theme: Teal-based) */
-    --color-secondary-main: #004d40;       /* H1テキスト */
-    --color-secondary-light: #b2dfdb;      /* H1ボーダー */
+    --color-secondary-main: #004d40;       /* H1 text */
+    --color-secondary-light: #b2dfdb;      /* H1 border */
 
     /* Backgrounds & UI */
-    --color-bg-code: #263238;              /* コードブロック背景 */
-    --color-text-code: #eceff1;            /* コードブロックテキスト */
+    --color-bg-code: #263238;              /* Code block background */
+    --color-text-code: #eceff1;            /* Code block text */
 }
 
-/* === 1. ベースレイアウト (レポート用紙風) === */
+/* === 1. Base layout (report-paper style) === */
 html {
     background-color: #f0f2f5;
     min-height: 100%;
@@ -36,7 +36,7 @@ html {
 
 body {
     font-family: 'Roboto', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    line-height: 1.6; /* 1.7から少し詰めて技術文書らしく変更 */
+    line-height: 1.6; /* tightened from 1.7 to suit technical documents */
     color: #212121;
     max-width: 900px;
     margin: 40px auto;
@@ -47,9 +47,9 @@ body {
     border: 1px solid #e0e0e0;
 }
 
-/* === 2. タイポグラフィ (サイズ調整済み) === */
+/* === 2. Typography (sizes tuned) === */
 
-/* H1: 文書タイトル (少しサイズを抑え、引き締まった印象に) */
+/* H1: document title (slightly smaller, for a tighter look) */
 h1 {
     font-size: 2.2em; /* 2.4em -> 2.2em */
     color: var(--color-secondary-main);
@@ -60,7 +60,7 @@ h1 {
     line-height: 1.3;
 }
 
-/* H2: セクション区切り (視認性を保ちつつ高さを節約) */
+/* H2: section break (saves height while staying visible) */
 h2 {
     font-size: 1.75em; /* 1.8em -> 1.75em */
     color: var(--color-primary-dark);
@@ -77,15 +77,15 @@ h2::before {
     left: 0;
     top: 50%;
     transform: translateY(-50%);
-    height: 75%; /* バーの高さを少し調整 */
+    height: 75%; /* bar height slightly adjusted */
     width: 5px;
     background-color: var(--color-primary-main);
     border-radius: 3px;
 }
 
-/* H3: サブセクション (本文より明確に大きく、H2より控えめに) */
+/* H3: subsection (clearly larger than body text, quieter than H2) */
 h3 {
-    font-size: 1.4em; /* 維持 (バランス良し) */
+    font-size: 1.4em; /* kept (well balanced) */
     color: var(--color-primary-light);
     margin-top: 30px;
     margin-bottom: 12px;
@@ -94,13 +94,13 @@ h3 {
     line-height: 1.4;
 }
 
-/* H4: 個別の指摘項目 (本文より「少しだけ」大きく強調) */
+/* H4: individual findings (emphasized, "just slightly" larger than body text) */
 h4 {
-    font-size: 1.15em; /* 1.2em -> 1.15em (本文との差を微調整) */
+    font-size: 1.15em; /* 1.2em -> 1.15em (fine-tuned difference from body text) */
     color: var(--color-primary-main);
     margin-top: 20px;
     margin-bottom: 8px;
-    font-weight: 700; /* 太さを強調 */
+    font-weight: 700; /* emphasize weight */
     line-height: 1.5;
 }
 
@@ -119,7 +119,7 @@ a:hover {
     border-bottom-color: var(--color-primary-dark);
 }
 
-/* === 3. コード表示 === */
+/* === 3. Code === */
 code {
     background-color: #e8eaf6;
     padding: 2px 6px;
@@ -137,7 +137,7 @@ pre {
     overflow-x: auto;
     margin: 20px 0;
     border: 1px solid #37474f;
-    font-size: 0.9em; /* コードは少し小さめが読みやすい */
+    font-size: 0.9em; /* code reads better slightly smaller */
     line-height: 1.5;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
@@ -149,7 +149,7 @@ pre code {
     border-radius: 0;
 }
 
-/* === 4. テーブルとステータス === */
+/* === 4. Tables and status === */
 .table-wrapper {
     overflow-x: auto;
     margin-bottom: 30px;
@@ -163,7 +163,7 @@ table {
     min-width: 600px;
     background-color: #fff;
     border-radius: 6px;
-    font-size: 0.95em; /* 表内の文字をわずかに小さくして情報を詰め込む */
+    font-size: 0.95em; /* slightly smaller text in tables to fit more information */
 }
 
 th, td {
@@ -187,7 +187,7 @@ tr:last-child td { border-bottom: none; }
 
 tbody tr:hover { background-color: #fafafa; }
 
-/* ステータスバッジ */
+/* Status badges */
 .badge {
     display: inline-block;
     padding: 3px 10px;
@@ -204,7 +204,7 @@ tbody tr:hover { background-color: #fafafa; }
 .status-warn { color: #bf360c; background-color: #fbe9e7; border: 1px solid #ffccbc; }
 .status-info { color: #01579b; background-color: #e1f5fe; border: 1px solid #b3e5fc; }
 
-/* === 5. 区切り線と引用 === */
+/* === 5. Rules and blockquotes === */
 hr {
     border: 0;
     border-top: 1px dashed #bdbdbd;
@@ -221,7 +221,7 @@ blockquote {
     font-size: 0.95em;
 }
 
-/* === 6. レスポンシブ対応 === */
+/* === 6. Responsive === */
 @media (max-width: 768px) {
     body {
         margin: 0;
@@ -234,11 +234,11 @@ blockquote {
     }
     h1 { font-size: 1.8em; }
     h2 { font-size: 1.5em; }
-    h3 { font-size: 1.25em; } /* モバイル用に調整 */
+    h3 { font-size: 1.25em; } /* adjusted for mobile */
     pre { padding: 15px; }
 }
 
-/* === 7. 印刷設定 === */
+/* === 7. Print === */
 @media print {
     html { background-color: #fff; }
     body {
@@ -247,7 +247,7 @@ blockquote {
         padding: 0;
         border: none;
         box-shadow: none;
-        font-size: 11pt; /* 印刷時のベースフォントサイズ */
+        font-size: 11pt; /* base font size when printing */
     }
     a { text-decoration: none; color: #000; }
     pre, code {

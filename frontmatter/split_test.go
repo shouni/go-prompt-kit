@@ -93,15 +93,15 @@ func TestSplit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			front, body := frontmatter.Split(tt.content)
 
-			assert.Equal(t, tt.wantFront, front, "front matter が期待と異なります")
-			assert.Equal(t, tt.wantBody, body, "本文が期待と異なります")
+			assert.Equal(t, tt.wantFront, front, "unexpected front matter")
+			assert.Equal(t, tt.wantBody, body, "unexpected body")
 		})
 	}
 }
 
-// TestSplit_ClosingDelimiterIsExactLine は、区切りとみなす行を "---" だけに限る
-// ことを確認します。文字数の違う行を区切りとして受け入れると、front matter が
-// 本文の途中で打ち切られ、切り出したメタデータも本文も壊れます。
+// TestSplit_ClosingDelimiterIsExactLine confirms that only a line of exactly "---" is a delimiter.
+// Accepting a line of another length would cut the front matter off mid-body and break both the
+// extracted metadata and the body.
 func TestSplit_ClosingDelimiterIsExactLine(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -117,14 +117,14 @@ func TestSplit_ClosingDelimiterIsExactLine(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			front, body := frontmatter.Split(tt.content)
 
-			assert.Empty(t, front, "区切りではない行を終了とみなしています")
-			assert.Equal(t, tt.content, body, "本文が加工されています")
+			assert.Empty(t, front, "a non-delimiter line was treated as the closing delimiter")
+			assert.Equal(t, tt.content, body, "the body was modified")
 		})
 	}
 }
 
-// TestSplit_KeepsBlankLineAfterDelimiter は、終了の区切りの直後にある空行を
-// 本文へ残すことを確認します。取り除くのは区切り行とその行末の改行だけです。
+// TestSplit_KeepsBlankLineAfterDelimiter confirms that a blank line right after the closing
+// delimiter stays in the body. Only the delimiter line and the newline ending it are removed.
 func TestSplit_KeepsBlankLineAfterDelimiter(t *testing.T) {
 	front, body := frontmatter.Split("---\ndirection: 技術解説\n---\n\n本文\n")
 
@@ -132,9 +132,9 @@ func TestSplit_KeepsBlankLineAfterDelimiter(t *testing.T) {
 	assert.Equal(t, "\n本文\n", body)
 }
 
-// TestSplit_Normalizes は、front matter の有無にかかわらず改行が LF へ揃い、
-// 先頭のBOMが取り除かれることを確認します。どちらもエディタ上では見えないため、
-// 揃えずにいると front matter を書いたのに認識されない状態を目視で追えません。
+// TestSplit_Normalizes confirms that line endings become LF and a leading BOM is removed whether or
+// not there is front matter. Both are invisible in an editor, so without normalizing, front matter
+// that was written but not detected cannot be tracked down by eye.
 func TestSplit_Normalizes(t *testing.T) {
 	t.Run("CRLF: front matter あり", func(t *testing.T) {
 		front, body := frontmatter.Split("---\r\ndirection: 技術解説\r\n---\r\n本文\r\n")
@@ -191,6 +191,6 @@ func TestSplitMap_Empty(t *testing.T) {
 
 	assert.Empty(t, bodies)
 	assert.Empty(t, fronts)
-	assert.NotNil(t, bodies, "nil ではなく空のマップを返すべきです")
-	assert.NotNil(t, fronts, "nil ではなく空のマップを返すべきです")
+	assert.NotNil(t, bodies, "should return an empty map, not nil")
+	assert.NotNil(t, fronts, "should return an empty map, not nil")
 }

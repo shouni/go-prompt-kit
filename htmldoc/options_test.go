@@ -10,13 +10,13 @@ import (
 	"github.com/shouni/go-prompt-kit/htmldoc"
 )
 
-// captured は、Renderer へ渡された引数を記録します。
+// captured records the arguments passed to the Renderer.
 type captured struct {
 	lang  string
 	title string
 }
 
-// newCapturingDocument は、Rendererへの引数を記録する Document を構築します。
+// newCapturingDocument builds a Document that records the arguments passed to the Renderer.
 func newCapturingDocument(t *testing.T, extracted string, opts ...htmldoc.Option) (*htmldoc.Document, *captured) {
 	t.Helper()
 
@@ -41,8 +41,8 @@ func TestDocument_Defaults(t *testing.T) {
 
 	require.NoError(t, doc.Run(io.Discard, "", []byte("input")))
 
-	assert.Equal(t, "ja-jp", got.lang, "既定の言語が使用されていません")
-	assert.Equal(t, "Document", got.title, "既定のタイトルが使用されていません")
+	assert.Equal(t, "ja-jp", got.lang, "the default language was not used")
+	assert.Equal(t, "Document", got.title, "the default title was not used")
 }
 
 func TestDocument_WithLang(t *testing.T) {

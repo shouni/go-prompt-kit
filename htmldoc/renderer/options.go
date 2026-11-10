@@ -5,8 +5,8 @@ import (
 	"html/template"
 )
 
-// config は Renderer の構築設定を保持します。
-// tpl / css が nil のままなら、埋め込みアセット（template.html / default.css）が使われます。
+// config holds the settings for building a Renderer. While tpl / css stay nil, the embedded assets
+// (template.html / default.css) are used.
 type config struct {
 	tpl      *template.Template
 	css      *template.CSS
@@ -14,37 +14,35 @@ type config struct {
 	err      error
 }
 
-// Option は Renderer の設定オプションを定義する関数型です。
+// Option is a function that configures a Renderer.
 type Option func(*config)
 
-// WithTemplate は、パース済みのテンプレートを使用します。
-// テンプレートは TemplateData（Lang / Title / Style / Content）を受け取れる必要があります。
+// WithTemplate uses an already parsed template. The template must accept a TemplateData (Lang /
+// Title / Style / Content).
 func WithTemplate(tpl *template.Template) Option {
 	return func(c *config) {
 		if tpl == nil {
-			c.err = fmt.Errorf("テンプレートがnilです")
+			c.err = fmt.Errorf("template is nil")
 			return
 		}
 		c.tpl = tpl
 	}
 }
 
-// WithTemplateText は、テンプレート文字列をパースして使用します。
-// パースに失敗した場合は New がエラーを返します。
+// WithTemplateText parses a template string and uses it. If parsing fails, New returns the error.
 func WithTemplateText(text string) Option {
 	return func(c *config) {
 		tpl, err := template.New("template.html").Parse(text)
 		if err != nil {
-			c.err = fmt.Errorf("HTMLテンプレートのパースエラー: %w", err)
+			c.err = fmt.Errorf("parse HTML template: %w", err)
 			return
 		}
 		c.tpl = tpl
 	}
 }
 
-// WithCSS は、埋め込みの default.css に代えて任意のスタイルシートを使用します。
-// テンプレートの <style> へそのまま挿入されるため、信頼できる内容のみを渡してください。
-// 空文字を渡すとスタイルなしでレンダリングされます。
+// WithCSS uses any stylesheet instead of the embedded default.css. It is inserted into the
+// template's <style> as is, so pass only trusted content. The empty string renders without styles.
 func WithCSS(css string) Option {
 	return func(c *config) {
 		style := template.CSS(css)
@@ -52,12 +50,12 @@ func WithCSS(css string) Option {
 	}
 }
 
-// WithExtraCSS は、土台となるスタイルシートの後ろへ追加のスタイルを連結します。
-// 既定の見た目を保ったまま独自の部品スタイルだけを足したい場合に使います。
-// 土台は WithCSS を指定していればその内容、指定がなければ埋め込みの default.css です。
+// WithExtraCSS appends additional styles after the base stylesheet. Use it to add only your own
+// component styles while keeping the default look. The base is the WithCSS content when given,
+// otherwise the embedded default.css.
 //
-// 後ろへ足されるため、同じセレクタを書けば土台の指定を上書きできます。
-// 複数回指定した場合は指定順に連結されます。
+// It is appended after the base, so writing the same selector overrides the base. Several calls are
+// joined in the order given.
 func WithExtraCSS(css string) Option {
 	return func(c *config) {
 		if css == "" {

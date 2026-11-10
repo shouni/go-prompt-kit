@@ -1,14 +1,14 @@
-// Package htmldoc は、AIの応答（MarkdownやJSON）を完全なHTMLドキュメントへ
-// 組み立てるパイプラインを提供します。
+// Package htmldoc provides a pipeline that assembles an AI response (Markdown or JSON) into a
+// complete HTML document.
 //
-// 変換は Converter（入力 → HTMLフラグメント）とRenderer（フラグメント → 完全なHTML）の
-// 2段階で行われ、Document がその2つを束ねます。既定ではMarkdown用のConverterと
-// 埋め込みアセットを使うRendererが構築されるため、次の2行で利用できます。
+// Conversion runs in two stages, Converter (input → HTML fragment) and Renderer (fragment →
+// complete HTML), and Document ties the two together. By default a Markdown Converter and a
+// Renderer using the embedded assets are built, so two lines are enough:
 //
 //	doc, err := htmldoc.New()
 //	err = doc.Run(w, "", input)
 //
-// 入力がJSONの場合など、別の Converter を使う場合は WithConverter で注入します。
+// To use another Converter, for example when the input is JSON, inject it with WithConverter.
 //
 //	doc, err := htmldoc.New(htmldoc.WithConverter(jsondoc.New(tpl)))
 package htmldoc
@@ -29,9 +29,8 @@ const (
 
 var _ ports.Runner = (*Document)(nil)
 
-// Document は ports.Runner の実装で、ConverterとRendererを束ねて
-// 完全なHTMLドキュメントを書き出します。
-// Converter がMarkdownを扱うかJSONを扱うかには関知しません。
+// Document implements ports.Runner; it ties a Converter and a Renderer together and writes a
+// complete HTML document. It does not care whether the Converter handles Markdown or JSON.
 type Document struct {
 	converter    ports.Converter
 	renderer     ports.Renderer
@@ -39,10 +38,10 @@ type Document struct {
 	defaultTitle string
 }
 
-// New は Document を構築します。
-// Converter / Renderer は WithConverter / WithRenderer で注入でき、
-// 注入がない場合のみ既定の実装（Markdown用Converter・埋め込みアセットのRenderer）が
-// 構築されます。既定のRendererの構築に失敗した場合はエラーを返します。
+// New builds a Document. A Converter / Renderer can be injected with WithConverter / WithRenderer,
+// and the default implementations (the Markdown Converter, the Renderer with embedded assets) are
+// built only when nothing is injected. It returns an error when building the default Renderer
+// fails.
 func New(opts ...Option) (*Document, error) {
 	cfg := &config{
 		lang:         defaultLang,
@@ -61,7 +60,7 @@ func New(opts ...Option) (*Document, error) {
 	if rend == nil {
 		r, err := renderer.New(cfg.rendererOptions...)
 		if err != nil {
-			return nil, fmt.Errorf("rendererの初期化エラー: %w", err)
+			return nil, fmt.Errorf("initialize renderer: %w", err)
 		}
 		rend = r
 	}
@@ -74,10 +73,10 @@ func New(opts ...Option) (*Document, error) {
 	}, nil
 }
 
-// Run は、入力をHTMLフラグメントに変換し、タイトルと言語を付与して
-// 完全なHTMLドキュメントとして writer へ書き出します。
-// タイトルは title 引数 → Converter による入力からの抽出 → 既定値 の順に解決されます。
-// 入力が空の場合は何も書き出さずに nil を返します。
+// Run converts the input into an HTML fragment, adds the title and language, and writes it to
+// writer as a complete HTML document. The title resolves in this order: the title argument →
+// extraction from the input by the Converter → the default. An empty input writes nothing and
+// returns nil.
 func (d *Document) Run(writer io.Writer, title string, input []byte) error {
 	if len(input) == 0 {
 		return nil
@@ -89,23 +88,23 @@ func (d *Document) Run(writer io.Writer, title string, input []byte) error {
 	}
 
 	if err := d.renderer.Render(writer, htmlFragment, d.lang, resolved); err != nil {
-		return fmt.Errorf("HTMLレンダリングに失敗しました: %w", err)
+		return fmt.Errorf("render HTML: %w", err)
 	}
 
 	return nil
 }
 
-// convert は、HTMLフラグメントと確定したタイトルを返します。
+// convert returns the HTML fragment and the resolved title.
 //
-// タイトルの指定がなく Converter が ports.TitledConverter を実装している場合は、
-// 変換と抽出をまとめて依頼します。Convert と ExtractTitle をそれぞれ呼ぶと、
-// 同じ入力を2回解析することになるためです。
+// When no title is given and the Converter implements ports.TitledConverter, conversion and
+// extraction are requested together. Calling Convert and ExtractTitle separately would parse the
+// same input twice.
 func (d *Document) convert(input []byte, title string) (fragment []byte, resolved string, err error) {
 	titled, ok := d.converter.(ports.TitledConverter)
 	if title != "" || !ok {
 		fragment, err = d.converter.Convert(input)
 		if err != nil {
-			return nil, "", fmt.Errorf("HTMLフラグメント生成エラー: %w", err)
+			return nil, "", fmt.Errorf("generate HTML fragment: %w", err)
 		}
 
 		return fragment, d.resolveTitle(title, input), nil
@@ -113,7 +112,7 @@ func (d *Document) convert(input []byte, title string) (fragment []byte, resolve
 
 	fragment, extracted, err := titled.ConvertWithTitle(input)
 	if err != nil {
-		return nil, "", fmt.Errorf("HTMLフラグメント生成エラー: %w", err)
+		return nil, "", fmt.Errorf("generate HTML fragment: %w", err)
 	}
 	if extracted == "" {
 		extracted = d.defaultTitle
@@ -122,9 +121,9 @@ func (d *Document) convert(input []byte, title string) (fragment []byte, resolve
 	return fragment, extracted, nil
 }
 
-// resolveTitle は、呼び出し側の指定・入力からの抽出・既定値の順にタイトルを決定します。
-// ports.TitledConverter を実装していない Converter 向けの経路です
-// （実装していれば convert がまとめて解決するため、ここは通りません）。
+// resolveTitle decides the title in this order: the caller's title, extraction from the input, the
+// default. It is the path for Converters that do not implement ports.TitledConverter (when they do,
+// convert resolves both at once and this is not reached).
 func (d *Document) resolveTitle(title string, input []byte) string {
 	if title != "" {
 		return title

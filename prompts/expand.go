@@ -7,21 +7,21 @@ import (
 )
 
 var (
-	// ErrCyclicTemplate は、partial が循環参照している場合に返されます。
+	// ErrCyclicTemplate is returned when partials reference each other in a cycle.
 	ErrCyclicTemplate = errors.New("prompts: template reference is cyclic")
 
-	// ErrNotExpandable は、引数付きの {{template "x" .Foo}} のように
-	// 展開するとデータコンテキストが変わってしまう参照があった場合に返されます。
+	// ErrNotExpandable is returned for a reference that would change the data context if expanded,
+	// such as {{template "x" .Foo}} with an argument.
 	ErrNotExpandable = errors.New("prompts: reference is not expandable")
 )
 
-// Expand は、指定されたモードの本文を、参照している partial を再帰的に
-// 差し込んだソース文字列として返します。
+// Expand returns the body of the given mode as source text with the partials it references inserted
+// recursively.
 //
-// Build と違い {{.Field}} などのアクションは評価されずそのまま残ります。
-// データを用意しなくても「実際に送られるプロンプトの構造」を確認できるため、
-// プロンプトのカタログ表示や、本文に書かれた制約の検査に使えます。
-// 同じ構文木から組み立てるので、結果は Build が使う本文と構造的に一致します。
+// Unlike Build, actions such as {{.Field}} are not evaluated and stay as they are. It shows "the
+// structure of the prompt actually sent" without preparing data, so it is useful for prompt
+// catalogs and for checking constraints written in a body. It is assembled from the same parse
+// trees, so the result matches the body Build uses structurally.
 func (b *Builder) Expand(mode string) (string, error) {
 	resolved, err := b.resolveMode(mode)
 	if err != nil {
@@ -36,8 +36,8 @@ func (b *Builder) Expand(mode string) (string, error) {
 	return list.String(), nil
 }
 
-// expandTemplate は、名前で引いたテンプレートの中身を展開済みのノード列として返します。
-// visiting は現在たどっている経路で、循環参照の検出に使います。
+// expandTemplate returns the contents of the named template as an expanded node list. visiting is
+// the path currently being followed, used to detect cycles.
 func (b *Builder) expandTemplate(name string, visiting map[string]bool) (*parse.ListNode, error) {
 	tmpl := b.root.Lookup(name)
 	if tmpl == nil || tmpl.Tree == nil {
@@ -53,8 +53,8 @@ func (b *Builder) expandTemplate(name string, visiting map[string]bool) (*parse.
 	return b.expandList(tmpl.Root, visiting)
 }
 
-// expandList は、ノード列を走査して {{template}} 参照を展開した新しいノード列を返します。
-// 元の構文木は Build が使い続けるため、書き換えず新しい列を組み立てます。
+// expandList walks a node list and returns a new node list with {{template}} references expanded.
+// Build keeps using the original parse trees, so a new list is built instead of rewriting them.
 func (b *Builder) expandList(list *parse.ListNode, visiting map[string]bool) (*parse.ListNode, error) {
 	expanded := &parse.ListNode{NodeType: parse.NodeList}
 	if list == nil {
@@ -72,14 +72,13 @@ func (b *Builder) expandList(list *parse.ListNode, visiting map[string]bool) (*p
 	return expanded, nil
 }
 
-// expandNode は、1つのノードを展開後のノード列へ変換します。
-// {{if}} や {{range}} の内側にある参照も展開するため、分岐ノードは
-// 値コピーしたうえで中身だけを差し替えます。
+// expandNode turns one node into the expanded node list. References inside {{if}} and {{range}} are
+// expanded too, so a branch node is copied by value and only its contents replaced.
 func (b *Builder) expandNode(node parse.Node, visiting map[string]bool) ([]parse.Node, error) {
 	switch n := node.(type) {
 	case *parse.TemplateNode:
 		if !isDotPipe(n.Pipe) {
-			return nil, fmt.Errorf("%w: '%s' に引数が指定されています", ErrNotExpandable, n.Name)
+			return nil, fmt.Errorf("%w: '%s' is given an argument", ErrNotExpandable, n.Name)
 		}
 		sub, err := b.expandTemplate(n.Name, visiting)
 		if err != nil {
@@ -126,7 +125,7 @@ func (b *Builder) expandNode(node parse.Node, visiting map[string]bool) ([]parse
 	}
 }
 
-// expandBranch は、分岐ノードの本体と else 節をそれぞれ展開します。
+// expandBranch expands a branch node's body and its else clause.
 func (b *Builder) expandBranch(branch parse.BranchNode, visiting map[string]bool) (parse.BranchNode, error) {
 	body, err := b.expandList(branch.List, visiting)
 	if err != nil {
@@ -145,10 +144,9 @@ func (b *Builder) expandBranch(branch parse.BranchNode, visiting map[string]bool
 	return branch, nil
 }
 
-// isDotPipe は、{{template "x"}} または {{template "x" .}} のように
-// データコンテキストを変えない参照かどうかを判定します。
-// {{template "x" .Foo}} を展開すると中身の .Bar が別のものを指してしまうため、
-// そのような参照は展開せずエラーにします。
+// isDotPipe reports whether a reference keeps the data context, like {{template "x"}} or {{template
+// "x" .}}. Expanding {{template "x" .Foo}} would make the .Bar inside point at something else, so
+// such a reference is an error instead of being expanded.
 func isDotPipe(pipe *parse.PipeNode) bool {
 	if pipe == nil {
 		return true

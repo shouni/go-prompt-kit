@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConverter_WithCJK は、東アジア言語向けの改行処理を確認します。
-// 段落中のソフト改行は既定でHTMLに残り、ブラウザ上で空白として描画されるため、
-// 日本語では文の途中に空白が入ります。
+// TestConverter_WithCJK checks the line-break handling for East Asian languages. By default a soft
+// line break inside a paragraph stays in the HTML and a browser renders it as a space, which puts a
+// space in the middle of a Japanese sentence.
 func TestConverter_WithCJK(t *testing.T) {
 	const japanese = "これは日本語の文章で、\n途中で改行しています。\n"
 
@@ -47,9 +47,10 @@ func TestConverter_WithCJK(t *testing.T) {
 	}
 }
 
-// TestConverter_WithCJK_TitleUnaffected は、CJK拡張がタイトル抽出へ影響しないことを
-// 確認します。CJK拡張が変えるのはレンダラーの改行の扱いだけで、タイトルは構文木から
-// 収集するため、複数行にまたがる見出しの語の区切りは拡張の有無にかかわらず空白のまま残ります。
+// TestConverter_WithCJK_TitleUnaffected confirms that the CJK extension does not affect title
+// extraction. The extension only changes how the renderer treats line breaks, while the title is
+// collected from the syntax tree, so the word separator in a heading spanning several lines stays a
+// space with or without the extension.
 func TestConverter_WithCJK_TitleUnaffected(t *testing.T) {
 	c := New(WithCJK(true))
 
@@ -61,8 +62,8 @@ func TestConverter_WithCJK_TitleUnaffected(t *testing.T) {
 	assert.Contains(t, string(fragment), "<p>本文です、続きます。</p>")
 }
 
-// TestConverter_ExtractTitle_MultilineHeading は、複数行の見出し（setext形式）で
-// 語が繋がらないよう空白が補われることを、CJK拡張の有無にかかわらず固定します。
+// TestConverter_ExtractTitle_MultilineHeading pins, with or without the CJK extension, that a space
+// is added in a multi-line (setext) heading so that words do not run together.
 func TestConverter_ExtractTitle_MultilineHeading(t *testing.T) {
 	const src = "日本語の\nタイトル\n=========\n"
 

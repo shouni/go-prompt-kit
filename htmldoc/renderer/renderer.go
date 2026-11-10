@@ -7,15 +7,14 @@ import (
 	"strings"
 )
 
-// Renderer は、HTMLフラグメントを完全なHTMLドキュメントへ組み立てる実装です。
+// Renderer is the implementation that assembles an HTML fragment into a complete HTML document.
 type Renderer struct {
 	tpl *template.Template
 	css template.CSS
 }
 
-// New は Renderer を構築します。
-// テンプレートとスタイルシートは構築時に一度だけ読み込み、以降の Render では読み直しません。
-// オプションを指定しない場合は、埋め込みの template.html と default.css を使用します。
+// New builds a Renderer. The template and the stylesheet are read once at construction and never
+// re-read by Render. Without options it uses the embedded template.html and default.css.
 func New(opts ...Option) (*Renderer, error) {
 	cfg := &config{}
 	for _, opt := range opts {
@@ -29,7 +28,7 @@ func New(opts ...Option) (*Renderer, error) {
 	if tpl == nil {
 		parsed, err := template.ParseFS(assets, "template.html")
 		if err != nil {
-			return nil, fmt.Errorf("HTMLテンプレートのパースエラー: %w", err)
+			return nil, fmt.Errorf("parse HTML template: %w", err)
 		}
 		tpl = parsed
 	}
@@ -40,7 +39,7 @@ func New(opts ...Option) (*Renderer, error) {
 	} else {
 		cssBytes, err := assets.ReadFile("default.css")
 		if err != nil {
-			return nil, fmt.Errorf("CSSファイルの読み込みエラー: %w", err)
+			return nil, fmt.Errorf("read CSS file: %w", err)
 		}
 		base = string(cssBytes)
 	}
@@ -51,8 +50,8 @@ func New(opts ...Option) (*Renderer, error) {
 	}, nil
 }
 
-// joinCSS は土台のスタイルシートへ追加分を連結します。
-// 後ろにあるほど優先されるため、追加分は土台の指定を上書きできます。
+// joinCSS appends the additions to the base stylesheet. Later rules take precedence, so the
+// additions can override the base.
 func joinCSS(base string, extra []string) string {
 	parts := make([]string, 0, 1+len(extra))
 	if base != "" {
@@ -67,12 +66,12 @@ func joinCSS(base string, extra []string) string {
 	return strings.Join(parts, "\n")
 }
 
-// Render は、HTMLフラグメントをテンプレートへ埋め込み、完全なHTMLドキュメントとして
-// writer へ書き出します。
+// Render embeds the HTML fragment in the template and writes it to writer as a complete HTML
+// document.
 //
-// bodyHTML と構築時のスタイルシートはエスケープせずに埋め込むため、
-// 信頼できる Converter の出力だけを渡してください。
-// テンプレートの実行が途中で失敗した場合、writer にはそこまでの出力が残ります。
+// bodyHTML and the stylesheet given at construction are embedded without escaping, so pass only the
+// output of a trusted Converter. If template execution fails midway, the output up to that point
+// remains in writer.
 func (r *Renderer) Render(writer io.Writer, bodyHTML []byte, lang, title string) error {
 	data := TemplateData{
 		Lang:    lang,
@@ -82,7 +81,7 @@ func (r *Renderer) Render(writer io.Writer, bodyHTML []byte, lang, title string)
 	}
 
 	if err := r.tpl.Execute(writer, data); err != nil {
-		return fmt.Errorf("HTMLテンプレートの実行エラー: %w", err)
+		return fmt.Errorf("execute HTML template: %w", err)
 	}
 
 	return nil

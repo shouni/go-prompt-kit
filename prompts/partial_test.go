@@ -104,11 +104,11 @@ func TestNewBuilder_Partials(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
 			"review": "{{template \"_missing\" .}}",
 		})
-		require.NoError(t, err, "未定義テンプレートの参照は実行時に検出される")
+		require.NoError(t, err, "a reference to an undefined template is detected at execution time")
 
 		_, err = b.Build("review", nil)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "プロンプトテンプレートの実行に失敗しました")
+		assert.Contains(t, err.Error(), "execute prompt template")
 	})
 
 	t.Run("partialしかない場合はエラーになる", func(t *testing.T) {
@@ -165,26 +165,26 @@ func TestNewBuilder_SentinelErrors(t *testing.T) {
 
 		_, err = b.Build("unknown", nil)
 		assert.ErrorIs(t, err, ErrUnknownMode)
-		// どのモードが無かったのかを文面に残す（番兵だけでは特定できないため）
+		// The message keeps which mode was missing (the sentinel alone cannot tell)
 		assert.Contains(t, err.Error(), "'unknown'")
 	})
 
 	t.Run("空の内容はエラー", func(t *testing.T) {
 		_, err := NewBuilder(map[string]string{"mode": ""})
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "内容が空です")
+		assert.Contains(t, err.Error(), "content is empty")
 	})
 
 	t.Run("解析できないテンプレートはエラー", func(t *testing.T) {
 		_, err := NewBuilder(map[string]string{"mode": "{{.Unclosed"})
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "プロンプト 'mode' の解析に失敗")
+		assert.Contains(t, err.Error(), "parse prompt 'mode'")
 	})
 }
 
 func TestNewBuilder_TrimPartials(t *testing.T) {
-	// 末尾が改行の partial を、本文の途中と末尾の両方から参照します。
-	// 途中で参照した側にだけ差が出るのが、このオプションが扱う現象です。
+	// Reference a partial ending in a newline both mid-body and at the end of a body. That only the
+	// mid-body side differs is the behavior this option deals with.
 	const partial = "共通の一文。\n"
 	templates := map[string]string{
 		"_shared": partial,

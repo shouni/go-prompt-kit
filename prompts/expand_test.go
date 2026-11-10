@@ -36,7 +36,8 @@ func TestBuilder_Expand(t *testing.T) {
 	})
 
 	t.Run("登録順に関係なく展開される", func(t *testing.T) {
-		// 参照先が名前順で後ろにあっても解決される（展開順への依存がないこと）
+		// A reference to an entry later in name order still resolves (no dependence on expansion
+		// order)
 		b, err := NewBuilder(map[string]string{
 			"a_mode":  `{{template "z_part" .}}`,
 			"z_part":  "後ろにある部品",
@@ -72,7 +73,7 @@ func TestBuilder_Expand(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "こんにちは、{{.Name}}さん！", expanded)
 
-		// 展開結果をそのまま実行すると Build と同じ出力になる
+		// Executing the expanded result as is gives the same output as Build
 		data := struct{ Name string }{Name: "太郎"}
 		built, err := b.Build("main", data)
 		require.NoError(t, err)
@@ -170,7 +171,7 @@ func TestBuilder_Expand_Errors(t *testing.T) {
 	})
 
 	t.Run("引数付きの参照は展開せずエラーにする", func(t *testing.T) {
-		// 展開すると部品内の . が別のものを指してしまうため
+		// Expanding it would make the . inside the partial point at something else
 		b, err := NewBuilder(map[string]string{
 			"_p":   "{{.Label}}",
 			"mode": `{{template "_p" .Item}}`,
@@ -226,8 +227,8 @@ func TestBuilder_Expand_Errors(t *testing.T) {
 	})
 }
 
-// TestBuilder_Expand_DoesNotMutate は、Expand が元の構文木を書き換えないことを確認します。
-// 書き換えてしまうと以降の Build が壊れます。
+// TestBuilder_Expand_DoesNotMutate confirms that Expand does not rewrite the original parse trees.
+// If it did, later Build calls would break.
 func TestBuilder_Expand_DoesNotMutate(t *testing.T) {
 	b, err := NewBuilder(map[string]string{
 		"_p":   "部品({{.X}})",
@@ -248,12 +249,12 @@ func TestBuilder_Expand_DoesNotMutate(t *testing.T) {
 	after, err := b.Build("mode", data)
 	require.NoError(t, err)
 
-	assert.Equal(t, before, after, "Expand の呼び出しが Build の結果を変えてはいけません")
+	assert.Equal(t, before, after, "calling Expand must not change what Build returns")
 	assert.Equal(t, "前 部品(値) 後", after)
 }
 
-// TestBuilder_Expand_NestedErrorPaths は、入れ子の内部で起きたエラーが
-// 呼び出し元まで伝播することを確認します。
+// TestBuilder_Expand_NestedErrorPaths confirms that an error raised deep inside a nesting
+// propagates to the caller.
 func TestBuilder_Expand_NestedErrorPaths(t *testing.T) {
 	t.Run("ifの内側の未定義参照", func(t *testing.T) {
 		b, err := NewBuilder(map[string]string{
@@ -298,8 +299,8 @@ func TestBuilder_Expand_NestedErrorPaths(t *testing.T) {
 	})
 }
 
-// TestBuilder_Expand_ArgumentForms は、展開できる参照とできない参照の
-// 境界を網羅します。データコンテキストを変えるものだけを拒否します。
+// TestBuilder_Expand_ArgumentForms covers the boundary between references that can and cannot be
+// expanded. Only those that change the data context are rejected.
 func TestBuilder_Expand_ArgumentForms(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -7,24 +7,24 @@ import (
 	"text/template/parse"
 )
 
-// Fields は、モードの本文が data に対して参照するフィールドを名前順で返します。
-// 参照する partial の中身も、Expand と同じ規則で辿ります。
+// Fields returns, in name order, the fields the mode's body references in data. It follows the
+// contents of referenced partials by the same rules as Expand.
 //
-// missingkey=error のおかげで、data に無いフィールドは Build で必ずエラーになります。
-// Fields はその手前で「このモードが何を要求しているか」をデータ無しで確かめるための
-// 対になる関数です。
+// Thanks to missingkey=error, a field missing from data always fails Build. Fields is its
+// counterpart for checking "what this mode requires" ahead of that, without data.
 //
 //	fields, err := builder.Fields("summarize")  // ["Language", "Source.Title"]
 //
-// ネストは "." で繋いだ形（"User.Name"）になります。
+// Nested fields are joined with "." ("User.Name").
 //
-// range と with の本体は列挙しません。その内側では "." が別の値を指すため、
-// フィールド名を data からの位置として報告できないからです（{{range .Items}} の
-// .Items 自体、else 節、$ を起点にした {{$.Language}} は位置が確定するので含まれます）。
-// 列挙されたものは確かに要求されていますが、列挙されなかったものが不要とは限りません。
+// The bodies of range and with are not listed: inside them "." points at another value, so a field
+// name there cannot be reported as a position in data. (The .Items of {{range .Items}} itself, the
+// else clause, and $-rooted references such as {{$.Language}} have a fixed position and are
+// included.) What is listed is certainly required, but what is not listed is not necessarily
+// unneeded.
 //
-// Expand と同じく、データコンテキストを変える {{template "x" .Foo}} は
-// ErrNotExpandable、循環参照は ErrCyclicTemplate になります。
+// As with Expand, a {{template "x" .Foo}} that changes the data context gives ErrNotExpandable, and
+// a cycle gives ErrCyclicTemplate.
 func (b *Builder) Fields(mode string) ([]string, error) {
 	resolved, err := b.resolveMode(mode)
 	if err != nil {
@@ -42,9 +42,9 @@ func (b *Builder) Fields(mode string) ([]string, error) {
 	return slices.Sorted(maps.Keys(found)), nil
 }
 
-// collectFields は、ノード配下のフィールド参照を found へ集めます。
-// rebound は "." が data 以外へ差し替わっている区間かどうかで、
-// その区間では位置の確定する $ 起点の参照だけを拾います。
+// collectFields collects the field references under node into found. rebound says whether "." has
+// been rebound to something other than data; in such a span only $-rooted references, whose
+// position is fixed, are picked up.
 func collectFields(node parse.Node, rebound bool, found map[string]struct{}) {
 	switch n := node.(type) {
 	case *parse.ListNode:
@@ -59,7 +59,7 @@ func collectFields(node parse.Node, rebound bool, found map[string]struct{}) {
 		collectPipe(n.Pipe, rebound, found)
 
 	case *parse.IfNode:
-		// if は "." を変えないため、本体も else 節もそのまま辿ります。
+		// if does not change ".", so both the body and the else clause are followed as they are.
 		collectPipe(n.Pipe, rebound, found)
 		collectFields(n.List, rebound, found)
 		collectFields(n.ElseList, rebound, found)
@@ -72,17 +72,17 @@ func collectFields(node parse.Node, rebound bool, found map[string]struct{}) {
 	}
 }
 
-// collectBranch は、range / with の各部を "." の差し替わりを踏まえて辿ります。
-// 対象の式（{{range .Items}} の .Items）は外側の "." で評価されます。
-// 本体の中では "." が要素・対象そのものへ差し替わり、
-// else 節は対象が空だったときに実行されるため "." は変わりません。
+// collectBranch follows the parts of a range / with, taking the rebinding of "." into account. The
+// target expression (the .Items of {{range .Items}}) is evaluated with the outer ".". Inside the
+// body "." is rebound to the element or the target itself, while the else clause runs when the
+// target is empty, so "." does not change there.
 func collectBranch(branch parse.BranchNode, rebound bool, found map[string]struct{}) {
 	collectPipe(branch.Pipe, rebound, found)
 	collectFields(branch.List, true, found)
 	collectFields(branch.ElseList, rebound, found)
 }
 
-// collectPipe は、パイプラインの各引数からフィールド参照を集めます。
+// collectPipe collects field references from every argument of a pipeline.
 func collectPipe(pipe *parse.PipeNode, rebound bool, found map[string]struct{}) {
 	if pipe == nil {
 		return
@@ -95,25 +95,25 @@ func collectPipe(pipe *parse.PipeNode, rebound bool, found map[string]struct{}) 
 	}
 }
 
-// collectArg は、パイプラインの引数1つを見てフィールド参照を集めます。
+// collectArg collects field references from one pipeline argument.
 func collectArg(arg parse.Node, rebound bool, found map[string]struct{}) {
 	switch a := arg.(type) {
 	case *parse.FieldNode:
-		// {{.User.Name}} — "." を起点とする参照です。
+		// {{.User.Name}} — a reference rooted at ".".
 		if !rebound {
 			addField(a.Ident, found)
 		}
 
 	case *parse.VariableNode:
-		// {{$.Language}} — $ は常に data そのものを指すため、
-		// range や with の内側でも位置が確定します。
+		// {{$.Language}} — $ always points at data itself, so the position is fixed even inside
+		// range or with.
 		if len(a.Ident) > 1 && a.Ident[0] == "$" {
 			addField(a.Ident[1:], found)
 		}
 
 	case *parse.ChainNode:
-		// {{(.User).Name}} のように括弧を挟んだ形です。
-		// 括弧の中身の位置が決まるなら繋いだ名前に、決まらないなら中身だけを見ます。
+		// A parenthesized form such as {{(.User).Name}}. If the position of the parenthesized part
+		// is fixed, record the joined name; otherwise look only at the inner part.
 		if base, ok := chainBase(a.Node, rebound); ok {
 			addField(concat(base, a.Field), found)
 			return
@@ -121,17 +121,17 @@ func collectArg(arg parse.Node, rebound bool, found map[string]struct{}) {
 		collectArg(a.Node, rebound, found)
 
 	case *parse.PipeNode:
-		// 括弧で囲んだ入れ子のパイプラインです。
+		// A nested, parenthesized pipeline.
 		collectPipe(a, rebound, found)
 	}
 }
 
-// chainBase は、括弧の中身が data からの位置の決まる参照であれば、
-// その位置を表す識別子の並びを返します。
+// chainBase returns the identifiers for the position when the parenthesized part is a reference
+// with a fixed position in data.
 func chainBase(node parse.Node, rebound bool) ([]string, bool) {
 	switch n := node.(type) {
 	case *parse.DotNode:
-		// {{(.).Name}} — 差し替わっていなければ data そのものが基点です。
+		// {{(.).Name}} — unless rebound, data itself is the base.
 		return nil, !rebound
 
 	case *parse.FieldNode:
@@ -147,7 +147,7 @@ func chainBase(node parse.Node, rebound bool) ([]string, bool) {
 		return n.Ident[1:], true
 
 	case *parse.PipeNode:
-		// 括弧の中が単一の参照だけなら、その位置がそのまま基点になります。
+		// If the parentheses hold a single reference, its position is the base as is.
 		if len(n.Decl) > 0 || len(n.Cmds) != 1 {
 			return nil, false
 		}
@@ -161,8 +161,8 @@ func chainBase(node parse.Node, rebound bool) ([]string, bool) {
 	return nil, false
 }
 
-// concat は、2つの識別子の並びを繋いだ新しい並びを返します。
-// 構文木が持つスライスへ追記してしまわないよう、必ず新しい領域へ写します。
+// concat returns a new sequence joining two identifier sequences. It always copies into new storage
+// so that it never appends to a slice owned by the parse tree.
 func concat(base, field []string) []string {
 	ident := make([]string, 0, len(base)+len(field))
 	ident = append(ident, base...)
@@ -171,7 +171,7 @@ func concat(base, field []string) []string {
 	return ident
 }
 
-// addField は、識別子の並びを "." で繋いだ名前として記録します。
+// addField records an identifier sequence as a name joined with ".".
 func addField(ident []string, found map[string]struct{}) {
 	if len(ident) == 0 {
 		return

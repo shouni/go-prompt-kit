@@ -8,8 +8,8 @@ import (
 	"github.com/yuin/goldmark/renderer/html"
 )
 
-// config は Converter の構築設定を保持します。
-// goldmark.New へ渡すオプションを種別ごとに蓄積し、New の中で一度だけ適用します。
+// config holds the settings for building a Converter. It accumulates the options for goldmark.New
+// by kind and applies them once inside New.
 type config struct {
 	rendererOptions []renderer.Option
 	parserOptions   []parser.Option
@@ -17,12 +17,11 @@ type config struct {
 	goldmarkOptions []goldmark.Option
 }
 
-// Option は Converter の設定オプションを定義する関数型です。
+// Option is a function that configures a Converter.
 type Option func(*config)
 
-// WithUnsafeHTML は、Goldmarkレンダラーで「安全でない」HTML出力を許可するオプションです。
-// 有効にすると Markdown 中の生HTMLがそのまま出力されるため、
-// 信頼できない入力に対しては使用しないでください。
+// WithUnsafeHTML allows "unsafe" HTML output in the goldmark renderer. When enabled, raw HTML in
+// the Markdown is output as is, so do not use it with untrusted input.
 func WithUnsafeHTML(enable bool) Option {
 	return func(c *config) {
 		if enable {
@@ -31,7 +30,7 @@ func WithUnsafeHTML(enable bool) Option {
 	}
 }
 
-// WithHardWraps は、Markdown内の単純な改行を <br> タグに変換するオプションです。
+// WithHardWraps converts plain line breaks in the Markdown into <br> tags.
 func WithHardWraps(enable bool) Option {
 	return func(c *config) {
 		if enable {
@@ -40,8 +39,8 @@ func WithHardWraps(enable bool) Option {
 	}
 }
 
-// WithAutoHeadingID は、見出しへ自動的に id 属性を付与するオプションです。
-// 目次からアンカーリンクを張る場合に有効にします。
+// WithAutoHeadingID adds id attributes to headings automatically. Enable it to link to anchors from
+// a table of contents.
 func WithAutoHeadingID(enable bool) Option {
 	return func(c *config) {
 		if enable {
@@ -50,7 +49,7 @@ func WithAutoHeadingID(enable bool) Option {
 	}
 }
 
-// WithTypographer は、引用符やダッシュなどを活字風の記号へ置き換えるオプションです。
+// WithTypographer replaces quotes, dashes and the like with typographic symbols.
 func WithTypographer(enable bool) Option {
 	return func(c *config) {
 		if enable {
@@ -59,22 +58,23 @@ func WithTypographer(enable bool) Option {
 	}
 }
 
-// WithCJK は、日本語などの東アジア言語向けの改行処理を有効にします。
+// WithCJK enables line-break handling for East Asian languages such as Japanese.
 //
-// Markdown では段落の途中の改行（ソフト改行）が出力HTMLにもそのまま残り、
-// ブラウザ上では空白として描画されます。単語を空白で区切る言語では正しい挙動ですが、
-// 日本語では文の途中に空白が入ります。
+// In Markdown a line break inside a paragraph (a soft line break) stays in the output HTML, and a
+// browser renders it as a space. That is correct for languages that separate words with spaces, but
+// in Japanese it puts a space in the middle of a sentence.
 //
 //	これは日本語の文章で、
 //	途中で改行しています。
 //
-//	無効: <p>これは日本語の文章で、\n途中で改行しています。</p>  → 「、 途中で」と表示される
-//	有効: <p>これは日本語の文章で、途中で改行しています。</p>
+//	off: <p>これは日本語の文章で、\n途中で改行しています。</p>  → displayed as "、 途中で"
+//	on:  <p>これは日本語の文章で、途中で改行しています。</p>
 //
-// 取り除かれるのは改行の前後がともに東アジアの全角文字である場合だけなので、
-// 日本語と英文が混在する文書でも英文側の区切りは保たれます。
+// Only a break with East Asian wide characters on both sides is removed, so in a document mixing
+// Japanese and English the separators on the English side are kept.
 //
-// htmldoc の既定の lang は "ja-jp" ですが、他の拡張オプションと揃えて既定では無効です。
+// htmldoc's default lang is "ja-jp", but this is off by default, consistent with the other
+// extension options.
 func WithCJK(enable bool) Option {
 	return func(c *config) {
 		if enable {
@@ -83,7 +83,7 @@ func WithCJK(enable bool) Option {
 	}
 }
 
-// WithFootnotes は、脚注記法（[^1]）を有効にするオプションです。
+// WithFootnotes enables footnote syntax ([^1]).
 func WithFootnotes(enable bool) Option {
 	return func(c *config) {
 		if enable {
@@ -92,8 +92,8 @@ func WithFootnotes(enable bool) Option {
 	}
 }
 
-// WithGoldmarkOptions は、上記のオプションで表現できない設定を
-// goldmark.Option として直接渡すための拡張点です。
+// WithGoldmarkOptions is an extension point for passing settings the options above cannot express
+// directly as goldmark.Option.
 func WithGoldmarkOptions(opts ...goldmark.Option) Option {
 	return func(c *config) {
 		c.goldmarkOptions = append(c.goldmarkOptions, opts...)

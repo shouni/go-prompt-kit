@@ -1,38 +1,39 @@
-// Package frontmatter は、プロンプトファイル先頭の front matter を本文から切り離します。
+// Package frontmatter splits the front matter at the top of a prompt file off its body.
 //
-// front matter は "---" で挟んだメタデータのブロックで、モードの説明などを
-// プロンプト自身に持たせるために使います。本文へ紛れ込むとAIへの指示の先頭に
-// メタデータが混ざるため、テンプレートとして登録する前に切り離します。
+// Front matter is a block of metadata between "---" lines, used to let a prompt carry its own
+// information, such as a mode description. If it leaked into the body, the metadata would end up at
+// the top of the instruction sent to the AI, so it is split off before the body is registered as a
+// template.
 //
 //	files, _ := resource.Load(promptFiles, "prompts")
 //	bodies, fronts := frontmatter.SplitMap(files)
 //	infos, _ := frontmatter.DecodeMap[ModeInfo](fronts, yaml.Unmarshal)
 //	builder, _ := prompts.NewBuilder(bodies)
 //
-// テンプレートの読み込みと組み立てが目的なら、この一連の流れは
-// prompts.LoadFS に prompts.WithFrontMatter を渡すことでも行えます。
+// When the goal is loading and building templates, the same flow is also available by passing
+// prompts.WithFrontMatter to prompts.LoadFS.
 //
-// メタデータの書式はこのパッケージでは解釈しません。解析関数は呼び出し側が
-// UnmarshalFunc として渡します（理由は UnmarshalFunc を参照）。このパッケージ自体は
-// 標準ライブラリだけに依存します。
+// This package does not interpret the metadata format. The caller passes the parsing function as an
+// UnmarshalFunc (see UnmarshalFunc for why). The package itself depends on the standard library
+// only.
 package frontmatter
 
 import "strings"
 
-// delimiter は front matter ブロックの区切りです。
-// 開始・終了ともに、この文字列だけからなる行である必要があります。
+// delimiter delimits a front matter block. Both the opening and the closing delimiter must be a
+// line consisting of this string alone.
 const delimiter = "---"
 
-// Split は、先頭の "---\nメタデータ\n---\n" ブロックを本文から切り離します。
-// front matter が無い場合、front は空文字、body は content 全体になります。
+// Split splits a leading "---\nmetadata\n---\n" block off the body. Without front matter, front is
+// empty and body is the whole content.
 //
-// 終了の区切りは "---" だけからなる行です。"----" のように文字数が違う行は
-// 区切りとみなしません。区切り行とその行末の改行だけを取り除くため、
-// 区切りの直後に空行がある場合、その空行は本文の一部として残ります。
+// The closing delimiter is a line consisting of "---" alone. A line of a different length, such as
+// "----", is not a delimiter. Only the delimiter line and the newline ending it are removed, so a
+// blank line right after the delimiter stays as part of the body.
 //
-// 返す文字列は、front matter の有無にかかわらず改行を LF に正規化し、
-// 先頭のBOMを取り除いたものです。BOMや CRLF はエディタ上で見えないまま
-// front matter の判定を外すため、判定前に揃えます。
+// The returned strings have their line endings normalized to LF and a leading BOM removed, whether
+// or not front matter was found. A BOM or CRLF is invisible in an editor yet defeats front matter
+// detection, so both are normalized before detecting.
 func Split(content string) (front, body string) {
 	normalized := normalize(content)
 
@@ -43,7 +44,7 @@ func Split(content string) (front, body string) {
 
 	rest := normalized[len(opening):]
 
-	// 中身のない front matter ブロック。開始行の直後が終了行のケースです。
+	// An empty front matter block: the closing line follows the opening line directly.
 	if rest == delimiter {
 		return "", ""
 	}
@@ -55,18 +56,18 @@ func Split(content string) (front, body string) {
 	if idx := strings.Index(rest, closing+"\n"); idx >= 0 {
 		return rest[:idx], rest[idx+len(closing)+1:]
 	}
-	// 本文が無いファイルでは、終了の区切りがファイル末尾に来ます。
+	// In a file without a body, the closing delimiter is at the end of the file.
 	if strings.HasSuffix(rest, closing) {
 		return rest[:len(rest)-len(closing)], ""
 	}
 
-	// 終了の区切りが無い。front matter のつもりの記述であっても本文として扱います。
+	// No closing delimiter. Even if it was meant as front matter, treat it as body.
 	return "", normalized
 }
 
-// SplitMap は、resource.Load が返すマップの各エントリを Split にかけ、
-// 本文と front matter をそれぞれのマップに分けて返します。
-// キーの集合は入力と同じで、front matter を持たないエントリの front は空文字です。
+// SplitMap runs Split on every entry of the map resource.Load returns and returns the bodies and
+// the front matter in separate maps. The keys are the same as the input's; an entry without front
+// matter has an empty front.
 func SplitMap(files map[string]string) (bodies, fronts map[string]string) {
 	bodies = make(map[string]string, len(files))
 	fronts = make(map[string]string, len(files))
@@ -80,10 +81,10 @@ func SplitMap(files map[string]string) (bodies, fronts map[string]string) {
 	return bodies, fronts
 }
 
-// bom は UTF-8 のバイトオーダーマークです。
+// bom is the UTF-8 byte order mark.
 const bom = "\ufeff"
 
-// normalize は、判定を妨げる見えない差異（BOM・CRLF）を取り除きます。
+// normalize removes invisible differences (BOM, CRLF) that would defeat detection.
 func normalize(content string) string {
 	return strings.ReplaceAll(strings.TrimPrefix(content, bom), "\r\n", "\n")
 }

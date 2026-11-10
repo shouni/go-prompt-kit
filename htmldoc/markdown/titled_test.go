@@ -8,10 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConverter_ConvertWithTitle は、まとめて解析する経路の結果が
-// Convert と ExtractTitle をそれぞれ呼んだ場合と一致することを確認します。
-// ports.TitledConverter がこの一致を約束しているため、ずれると
-// タイトルの指定有無だけで出力が変わります。
+// TestConverter_ConvertWithTitle confirms that the single-parse path gives the same result as
+// calling Convert and ExtractTitle separately. ports.TitledConverter promises this, so a drift
+// would change the output merely depending on whether a title was given.
 func TestConverter_ConvertWithTitle(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -43,10 +42,9 @@ func TestConverter_ConvertWithTitle(t *testing.T) {
 	}
 }
 
-// TestConverter_ImplementsTitledConverter は、最適化された経路が
-// 実際に選ばれる形になっていることを確認します。
-// インターフェースを満たさなくなっても Document は動いてしまい、
-// 気付けるのは黙って2回解析に戻ったあとだからです。
+// TestConverter_ImplementsTitledConverter confirms that the optimized path is actually in a shape
+// that gets chosen. Document keeps working even when the interface is no longer satisfied, so the
+// drift would only be noticed after it had silently gone back to parsing twice.
 func TestConverter_ImplementsTitledConverter(t *testing.T) {
 	var titled ports.TitledConverter = New()
 

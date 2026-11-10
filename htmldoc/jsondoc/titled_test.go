@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConverter_ConvertWithTitle は、まとめてデコードする経路の結果が
-// Convert と ExtractTitle をそれぞれ呼んだ場合と一致することを確認します。
+// TestConverter_ConvertWithTitle confirms that the single-decode path gives the same result as
+// calling Convert and ExtractTitle separately.
 func TestConverter_ConvertWithTitle(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -40,8 +40,8 @@ func TestConverter_ConvertWithTitle(t *testing.T) {
 	}
 }
 
-// TestConverter_ExtractTitle_Streaming は、キーが見つかった時点で読み取りを
-// 打ち切る実装の境界を固定します。
+// TestConverter_ExtractTitle_Streaming pins the boundaries of the implementation that stops reading
+// as soon as the key is found.
 func TestConverter_ExtractTitle_Streaming(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -76,8 +76,8 @@ func TestConverter_ExtractTitle_Streaming(t *testing.T) {
 	}
 }
 
-// TestConverter_ImplementsTitledConverter は、最適化された経路が
-// 実際に選ばれる形になっていることを確認します。
+// TestConverter_ImplementsTitledConverter confirms that the optimized path is actually in a shape
+// that gets chosen.
 func TestConverter_ImplementsTitledConverter(t *testing.T) {
 	var titled ports.TitledConverter = New(mustParse(t, "test", `<h1>{{.title}}</h1>`))
 
